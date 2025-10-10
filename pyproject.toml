@@ -1,0 +1,22 @@
+[project]
+name = "storage-api"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.13"
+dependencies = [
+    "everbase",
+    "fastapi>=0.121.0",
+    "orjson>=3.11.4",
+    "sqlalchemy>=2.0.44",
+    "starlette>=0.49.3",
+    "gunicorn>=23.0.0",
+    "uvicorn>=0.38.0",
+    "uvloop>=0.21.0 ; sys_platform == 'linux'",
+    "loguru>=0.7.3",
+    "pydantic-settings>=2.11.0",
+    "pydantic>=2.12.3",
+]
+
+[tool.uv.sources]
+everbase = { git = "https://github.com/OneTells/everbase" }
+
