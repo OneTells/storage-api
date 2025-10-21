@@ -1,0 +1,40 @@
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+
+  websecure:
+    address: ":443"
+    http3: {}
+    transport:
+      respondingTimeouts:
+        readTimeout: 10m
+
+log:
+  level: INFO
+
+api:
+  dashboard: false
+  insecure: false
+
+providers:
+  docker:
+    exposedByDefault: false
+
+  file:
+    filename: /etc/traefik/dynamic.yaml
+    watch: true
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: "your@example.com"
+      storage: "/certificates/acme.json"
+      httpChallenge:
+        entryPoint: web
+      tlsChallenge: false
+      dnsChallenge: null

@@ -1,0 +1,65 @@
+services:
+  storage-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    entrypoint: >
+      gunicorn main:app 
+      --workers 2 
+      --bind 0.0.0.0:8000 
+      --timeout 600 
+      --worker-class uvicorn.workers.UvicornWorker 
+      --keep-alive 600
+#      --forwarded-allow-ips="172.19.0.3"
+    volumes:
+      - storage_api_memory:/app/memory
+    ports:
+      - "8000:8000"
+    stop_grace_period: 1m30s
+    restart: unless-stopped
+    depends_on:
+#      - traefik
+      - postgres
+#    networks:
+#      - default
+
+#  traefik:
+#    image: traefik:v3.4
+#    ports:
+#      - "80:80"
+#      - "443:443"
+#    volumes:
+#      - ./traefik.yaml:/etc/traefik/traefik.yaml:ro
+#      - ./dynamic.yaml:/etc/traefik/dynamic.yaml:ro
+#      - /var/run/docker.sock:/var/run/docker.sock:ro
+#      - /traefik-public-certificates:/certificates
+#    restart: unless-stopped
+#    networks:
+#      default:
+#        ipv4_address: 172.19.0.3
+
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: ${database_user}
+      POSTGRES_PASSWORD: ${database_password}
+      POSTGRES_DB: ${database_name}
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+#    networks:
+#      - default
+
+#networks:
+#  default:
+#    driver: bridge
+#    ipam:
+#      config:
+#        - subnet: 172.19.0.0/16
+#          gateway: 172.19.0.1
+
+volumes:
+  postgres_data:
+  storage_api_memory:
