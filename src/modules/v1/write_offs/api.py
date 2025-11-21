@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 from core.methods import get_connection
 from .write_off.api import router as write_off_router
 
-router = APIRouter(prefix="/write_offs")
+router = APIRouter(prefix="/write-offs")
 router.include_router(write_off_router)
 
 

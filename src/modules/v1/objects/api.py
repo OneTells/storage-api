@@ -16,7 +16,7 @@ async def get_objects(
     ...
 
 
-@router.get('/{object_id}/object_units')
+@router.get('/{object_id}/object-units')
 async def get_object_units(
     connection: Annotated[Connection, Depends(get_connection)],
     object_id: Annotated[int, Path(ge=1)]

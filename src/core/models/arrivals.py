@@ -1,8 +1,9 @@
+import uuid
 from datetime import datetime
 from enum import auto, StrEnum
 
 from everbase import Base
-from sqlalchemy import BigInteger, Text, ForeignKey, TIMESTAMP, func, Enum
+from sqlalchemy import BigInteger, Text, ForeignKey, TIMESTAMP, func, Enum, UUID
 from sqlalchemy.orm import MappedColumn, mapped_column
 
 from .user import User
@@ -38,7 +39,7 @@ class ArrivalItem(Base):
     id: MappedColumn[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
 
     arrival_id: MappedColumn[int] = mapped_column(BigInteger, ForeignKey(Arrival.id, ondelete="CASCADE"), nullable=False)
-    object_unit_id: MappedColumn[int | None] = mapped_column(BigInteger, ForeignKey(ObjectUnit.id), nullable=True)
+    object_unit_id: MappedColumn[uuid.UUID | None] = mapped_column(UUID, ForeignKey(ObjectUnit.id), nullable=True)
 
     object_id: MappedColumn[int] = mapped_column(BigInteger, ForeignKey(Object.id), nullable=False)
     warehouse_id: MappedColumn[int] = mapped_column(BigInteger, ForeignKey(Warehouse.id), nullable=False)

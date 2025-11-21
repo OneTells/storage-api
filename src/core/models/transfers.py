@@ -1,8 +1,9 @@
+import uuid
 from datetime import datetime
 from enum import auto, StrEnum
 
 from everbase import Base
-from sqlalchemy import BigInteger, Text, ForeignKey, TIMESTAMP, func, Enum, PrimaryKeyConstraint
+from sqlalchemy import BigInteger, Text, ForeignKey, TIMESTAMP, func, Enum, PrimaryKeyConstraint, UUID
 from sqlalchemy.orm import MappedColumn, mapped_column
 
 from .user import User
@@ -35,7 +36,7 @@ class TransferItem(Base):
     __tablename__ = "transfer_items"
 
     transfer_id: MappedColumn[int] = mapped_column(BigInteger, ForeignKey(Transfer.id), nullable=False)
-    object_unit_id: MappedColumn[int] = mapped_column(BigInteger, ForeignKey(ObjectUnit.id), nullable=False)
+    object_unit_id: MappedColumn[uuid.UUID] = mapped_column(UUID, ForeignKey(ObjectUnit.id), nullable=False)
 
     source_warehouse_id: MappedColumn[int] = mapped_column(BigInteger, ForeignKey(Warehouse.id), nullable=False)
     destination_warehouse_id: MappedColumn[int] = mapped_column(BigInteger, ForeignKey(Warehouse.id), nullable=False)

@@ -11,7 +11,7 @@ from modules.v1.transfers.api import router as transfers_router
 from modules.v1.warehouses.api import router as warehouses_router
 from modules.v1.write_offs.api import router as write_offs_router
 
-v1_router = APIRouter(prefix="/api")
+v1_router = APIRouter(prefix="/v1")
 v1_router.include_router(arrivals_router)
 v1_router.include_router(categories_router)
 v1_router.include_router(object_units_router)
