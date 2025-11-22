@@ -2,7 +2,7 @@ from typing import Annotated
 
 from asyncpg import Record
 from everbase import Insert, Select, Update
-from fastapi import APIRouter, Path, HTTPException
+from fastapi import APIRouter, HTTPException, Body
 
 from core.models import Warehouse
 from core.objects import database
@@ -11,7 +11,7 @@ from modules.v1.warehouses.schemes import (
     WarehouseCreate,
     WarehouseCreateResponse,
     WarehouseRead,
-    WarehouseUpdate
+    WarehouseUpdate, WarehouseIdType
 )
 
 WAREHOUSE_NOT_FOUND_RESPONSE = {
@@ -36,7 +36,7 @@ router = APIRouter()
         500: INTERNAL_ERROR_RESPONSE,
     }
 )
-async def create_warehouse(payload: WarehouseCreate):
+async def create_warehouse(payload: Annotated[WarehouseCreate, Body()]):
     async with database.get_connection() as connection:
         response: Record = await (
             Insert(Warehouse)
@@ -58,9 +58,7 @@ async def create_warehouse(payload: WarehouseCreate):
         500: INTERNAL_ERROR_RESPONSE,
     }
 )
-async def get_warehouse(
-    warehouse_id: Annotated[int, Path(ge=1, description="Идентификатор склада")],
-):
+async def get_warehouse(warehouse_id: WarehouseIdType):
     async with database.get_connection() as connection:
         response = await (
             Select(
@@ -91,8 +89,8 @@ async def get_warehouse(
     }
 )
 async def update_warehouse(
-    warehouse_id: Annotated[int, Path(ge=1, description="Идентификатор склада")],
-    payload: WarehouseUpdate,
+    warehouse_id: WarehouseIdType,
+    payload: Annotated[WarehouseUpdate, Body()]
 ):
     async with database.get_connection() as connection:
         response = await (

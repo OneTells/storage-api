@@ -1,10 +1,32 @@
-from pydantic import BaseModel, AwareDatetime
+from typing import Annotated
+
+from fastapi import Path
+from pydantic import BaseModel, AwareDatetime, Field
+
+SupplierIdType = Annotated[int, Path(ge=1, description="Идентификатор поставщика")]
+
+IdField = Annotated[int, Field(ge=1, description="Идентификатор поставщика")]
+NameField = Annotated[str, Field(min_length=1, max_length=200, description="Название поставщика")]
+IsActiveField = Annotated[bool, Field(description="Флаг активности поставщика")]
+CreatedAtField = Annotated[AwareDatetime, Field(description="Время добавления поставщика")]
 
 
-class SupplierModel(BaseModel):
-    id: int
+class SupplierCreate(BaseModel):
+    name: NameField
+    is_active: IsActiveField
 
-    name: str
-    is_active: bool
 
-    created_at: AwareDatetime
+class SupplierCreateResponse(BaseModel):
+    id: IdField
+
+
+class SupplierRead(BaseModel):
+    id: IdField
+    name: NameField
+    is_active: IsActiveField
+    created_at: CreatedAtField
+
+
+class SupplierUpdate(BaseModel):
+    name: NameField
+    is_active: IsActiveField
