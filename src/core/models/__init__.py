@@ -1,4 +1,5 @@
 from .arrivals import Arrival, ArrivalItem
+from .categories import CategorySubcategory, CategoryObject, Category
 from .object_units import ObjectUnit
 from .objects import Object
 from .sale_orders import SaleOrderItem, SaleOrder
@@ -16,5 +17,8 @@ __all__ = (
     "SaleOrderItem",
     "Supplier",
     "User",
-    "UserSession"
+    "UserSession",
+    "Category",
+    "CategoryObject",
+    "CategorySubcategory"
 )

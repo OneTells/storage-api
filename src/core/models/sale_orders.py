@@ -4,7 +4,7 @@ from enum import auto, StrEnum
 
 from everbase import Base
 from sqlalchemy import BigInteger, Text, ForeignKey, TIMESTAMP, func, Enum, PrimaryKeyConstraint, UUID
-from sqlalchemy.orm import MappedColumn, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column
 
 from .user import User
 from .object_units import ObjectUnit
@@ -20,26 +20,26 @@ class SaleOrderStatus(StrEnum):
 class SaleOrder(Base):
     __tablename__ = "sale_orders"
 
-    id: MappedColumn[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
 
-    supplier_id: MappedColumn[int] = mapped_column(BigInteger, ForeignKey(Supplier.id), nullable=False)
+    supplier_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(Supplier.id), nullable=False)
 
-    name: MappedColumn[str] = mapped_column(Text, nullable=False)
-    status: MappedColumn[SaleOrderStatus] = mapped_column(Enum(SaleOrderStatus), nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[SaleOrderStatus] = mapped_column(Enum(SaleOrderStatus), nullable=False)
 
-    creator_id: MappedColumn[int] = mapped_column(BigInteger, ForeignKey(User.id), nullable=False)
+    creator_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(User.id), nullable=False)
 
-    created_at: MappedColumn[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
 
 
 class SaleOrderItem(Base):
     __tablename__ = "sale_order_items"
 
-    sale_order_id: MappedColumn[int] = mapped_column(BigInteger, ForeignKey(SaleOrder.id), nullable=False)
-    object_unit_id: MappedColumn[uuid.UUID] = mapped_column(UUID, ForeignKey(ObjectUnit.id), nullable=False)
+    sale_order_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(SaleOrder.id), nullable=False)
+    object_unit_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey(ObjectUnit.id), nullable=False)
 
-    warehouse_id: MappedColumn[int] = mapped_column(BigInteger, ForeignKey(Warehouse.id), nullable=False)
-    sale_price: MappedColumn[float] = mapped_column(BigInteger, nullable=False)
+    warehouse_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(Warehouse.id), nullable=False)
+    sale_price: Mapped[float] = mapped_column(BigInteger, nullable=False)
 
     __table_args__ = (
         PrimaryKeyConstraint(sale_order_id, object_unit_id),

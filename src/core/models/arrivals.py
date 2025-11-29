@@ -4,7 +4,7 @@ from enum import auto, StrEnum
 
 from everbase import Base
 from sqlalchemy import BigInteger, Text, ForeignKey, TIMESTAMP, func, Enum, UUID
-from sqlalchemy.orm import MappedColumn, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column
 
 from .user import User
 from .objects import Object
@@ -21,26 +21,26 @@ class ArrivalStatus(StrEnum):
 class Arrival(Base):
     __tablename__ = "arrivals"
 
-    id: MappedColumn[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
 
-    supplier_id: MappedColumn[int] = mapped_column(BigInteger, ForeignKey(Supplier.id), nullable=False)
+    supplier_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(Supplier.id), nullable=False)
 
-    name: MappedColumn[str] = mapped_column(Text, nullable=False)
-    status: MappedColumn[ArrivalStatus] = mapped_column(Enum(ArrivalStatus), nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[ArrivalStatus] = mapped_column(Enum(ArrivalStatus), nullable=False)
 
-    creator_id: MappedColumn[int] = mapped_column(BigInteger, ForeignKey(User.id), nullable=False)
+    creator_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(User.id), nullable=False)
 
-    created_at: MappedColumn[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
 
 
 class ArrivalItem(Base):
     __tablename__ = "arrival_items"
 
-    id: MappedColumn[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
 
-    arrival_id: MappedColumn[int] = mapped_column(BigInteger, ForeignKey(Arrival.id, ondelete="CASCADE"), nullable=False)
-    object_unit_id: MappedColumn[uuid.UUID | None] = mapped_column(UUID, ForeignKey(ObjectUnit.id), nullable=True)
+    arrival_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(Arrival.id, ondelete="CASCADE"), nullable=False)
+    object_unit_id: Mapped[uuid.UUID | None] = mapped_column(UUID, ForeignKey(ObjectUnit.id), nullable=True)
 
-    object_id: MappedColumn[int] = mapped_column(BigInteger, ForeignKey(Object.id), nullable=False)
-    warehouse_id: MappedColumn[int] = mapped_column(BigInteger, ForeignKey(Warehouse.id), nullable=False)
-    price: MappedColumn[float] = mapped_column(BigInteger, nullable=False)
+    object_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(Object.id), nullable=False)
+    warehouse_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(Warehouse.id), nullable=False)
+    price: Mapped[float] = mapped_column(BigInteger, nullable=False)
