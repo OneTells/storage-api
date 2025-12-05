@@ -1,64 +1,232 @@
 from typing import Annotated
 
-from asyncpg import Connection
-from fastapi import APIRouter, Depends, Body, Path
+from asyncpg import Record
+from everbase import Insert, Select, Update, Delete
+from fastapi import APIRouter, Body, HTTPException
 
-from core.methods import get_connection
+from core.models import Category, CategoryObject, CategorySubcategory
+from core.objects import database
+from core.utils.openapi import INTERNAL_ERROR_RESPONSE
+from modules.v1.categories.schemes import (
+    CategoryCreate,
+    CategoryCreateResponse,
+    CategoryRead,
+    CategoryUpdate,
+    CategoryIdType
+)
+
+CATEGORY_NOT_FOUND_RESPONSE = {
+    "description": "Категория не существует",
+    "content": {
+        "application/json": {
+            "example": {"detail": "Категория не существует"}
+        }
+    }
+}
 
 router = APIRouter()
 
 
-@router.post('/')
-async def create_category(
-    connection: Annotated[Connection, Depends(get_connection)],
-    name: Annotated[str, Body(min_length=1)],
-    is_subcategory: Annotated[bool, Body()] = False,
-):
-    ...
+@router.post(
+    '/',
+    response_model=CategoryCreateResponse,
+    status_code=201,
+    summary="Создать новую категорию",
+    responses={
+        201: {"description": "Идентификатор созданной категории"},
+        500: INTERNAL_ERROR_RESPONSE,
+    }
+)
+async def create_category(payload: Annotated[CategoryCreate, Body()]):
+    async with database.get_connection() as connection:
+        response: Record = await (
+            Insert(Category)
+            .values(**payload.model_dump())
+            .returning(Category.id)
+            .fetch_one(connection)
+        )
+
+    return {'id': response['id']}
 
 
-@router.get('/{category_id}')
-async def get_category(
-    connection: Annotated[Connection, Depends(get_connection)],
-    category_id: Annotated[int, Path(ge=1)],
-):
-    ...
+@router.get(
+    '/{category_id}',
+    response_model=CategoryRead,
+    summary="Получить информацию о категории",
+    responses={
+        200: {"description": "Информация о категории"},
+        404: CATEGORY_NOT_FOUND_RESPONSE,
+        500: INTERNAL_ERROR_RESPONSE,
+    }
+)
+async def get_category(category_id: CategoryIdType):
+    async with database.get_connection() as connection:
+        response = await (
+            Select(
+                Category.id,
+                Category.name,
+                Category.description,
+                Category.created_at
+            )
+            .where(Category.id == category_id)
+            .fetch_one(connection, model=lambda x: dict(x))
+        )
+
+    if response is None:
+        raise HTTPException(status_code=404, detail="Категория не существует")
+
+    return response
 
 
-@router.put('/{category_id}')
+@router.put(
+    '/{category_id}',
+    status_code=204,
+    summary="Обновить информацию о категории",
+    responses={
+        204: {"description": "Категория успешно обновлёна"},
+        404: CATEGORY_NOT_FOUND_RESPONSE,
+        500: INTERNAL_ERROR_RESPONSE,
+    }
+)
 async def update_category(
-    connection: Annotated[Connection, Depends(get_connection)],
-    category_id: Annotated[int, Path(ge=1)],
-    name: Annotated[str, Body(min_length=1)],
-    is_subcategory: Annotated[bool, Body()] = False,
+    category_id: CategoryIdType,
+    payload: Annotated[CategoryUpdate, Body()]
 ):
-    ...
+    async with database.get_connection() as connection:
+        response = await (
+            Update(Category)
+            .values(**payload.model_dump())
+            .where(Category.id == category_id)
+            .returning(Category.id)
+            .fetch_one(connection)
+        )
+
+    if response is None:
+        raise HTTPException(status_code=404, detail="Категория не существует")
+
+    return None
 
 
-@router.delete('/{category_id}')
-async def delete_category(
-    connection: Annotated[Connection, Depends(get_connection)],
-    category_id: Annotated[int, Path(ge=1)],
-):
-    ...
+@router.delete(
+    '/{category_id}',
+    status_code=204,
+    summary="Удалить категорию",
+    responses={
+        204: {"description": "Категория успешно удалена"},
+        404: CATEGORY_NOT_FOUND_RESPONSE,
+        409: {
+            "description": "Удаление категории невозможно из-за наличия дочерних категорий или объектов",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "all": {
+                            "summary": "Наличие дочерних категорий и объектов",
+                            "value": {
+                                "detail": "Удаление категории невозможно из-за наличия дочерних категорий и объектов"
+                            }
+                        },
+                        "objects": {
+                            "summary": "Наличие дочерних объектов",
+                            "value": {
+                                "detail": "Удаление категории невозможно из-за наличия дочерних объектов"
+                            }
+                        },
+                        "categories": {
+                            "summary": "Наличие дочерних категорий",
+                            "value": {
+                                "detail": "Удаление категории невозможно из-за наличия дочерних категорий"
+                            }
+                        }
+                    }
+                }
+            },
+        },
+        500: INTERNAL_ERROR_RESPONSE,
+    }
+)
+async def delete_category(category_id: CategoryIdType):
+    async with database.get_connection() as connection:
+        response: list[bool] = await (
+            Select(
+                (
+                    Select(1)
+                    .select_from(Category)
+                    .where(Category.id == category_id)
+                    .exists()
+                ),
+                (
+                    Select(1)
+                    .select_from(CategoryObject)
+                    .where(CategoryObject.category_id == category_id)
+                    .exists()
+                ),
+                (
+                    Select(1)
+                    .select_from(CategorySubcategory)
+                    .where(CategorySubcategory.category_id == category_id)
+                    .exists()
+                )
+            )
+            .fetch_one(connection, model=lambda x: list(map(bool, x)))
+        )
+
+        exists_category, exists_objects, exists_subcategory = response
+
+        if not exists_category:
+            raise HTTPException(status_code=404, detail="Категория не существует")
+
+        if exists_objects and exists_subcategory:
+            raise HTTPException(
+                status_code=409,
+                detail="Удаление категории невозможно из-за наличия дочерних категорий и объектов"
+            )
+
+        if exists_objects:
+            raise HTTPException(
+                status_code=409,
+                detail="Удаление категории невозможно из-за наличия дочерних объектов"
+            )
+
+        if exists_subcategory:
+            raise HTTPException(
+                status_code=409,
+                detail="Удаление категории невозможно из-за наличия дочерних категорий"
+            )
+
+        await (
+            Delete(Category)
+            .where(Category.id == category_id)
+            .execute(connection)
+        )
+
+    return None
 
 
-#  FIXME: Переместить в другую папку?
+# Целевая категория существует
+# Нельзя добавить категорию внутрь её же потомка.
+# Категория не равна самой себе
+# Нельзя “привязать” категорию к самой себе как к родителю.
+# Проверить существование объекта
+# объект может быть только в одной категории
+# Учитывать, что дети категории эта одна сущность
 
+# !!!! Один объект в нескольких категотьриях может быть
 
-@router.put('/{category_id}/subcategory')
-async def add_subcategory(
-    connection: Annotated[Connection, Depends(get_connection)],
-    category_id: Annotated[int, Path(ge=1)],
-    subcategory_id: Annotated[int, Body(ge=1)],
-):
-    ...
-
-
-@router.delete('/{category_id}/subcategory')
-async def remove_subcategory(
-    connection: Annotated[Connection, Depends(get_connection)],
-    category_id: Annotated[int, Path(ge=1)],
-    subcategory_id: Annotated[int, Body(ge=1)],
-):
-    ...
+# @router.post('/{category_id}/subcategory')
+# async def link_subcategory():
+#     ...
+#
+#
+# @router.delete('/{category_id}/subcategory')
+# async def unlink_subcategory():
+#     ...
+#
+#
+# @router.post('/{category_id}/objects')
+# async def link_object():
+#     ...
+#
+#
+# @router.delete('/{category_id}/objects')
+# async def unlink_object():
+#     ...
