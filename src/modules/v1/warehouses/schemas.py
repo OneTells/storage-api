@@ -1,7 +1,9 @@
 from typing import Annotated
 
 from fastapi import Path
-from pydantic import BaseModel, AwareDatetime, Field
+from pydantic import AwareDatetime, BaseModel, Field
+
+from core.schemas import Pagination
 
 WarehouseIdType = Annotated[int, Path(ge=1, description="Идентификатор склада")]
 
@@ -28,6 +30,11 @@ class WarehouseRead(BaseModel):
     address: AddressField
     is_active: IsActiveField
     created_at: CreatedAtField
+
+
+class WarehouseReadResponse(BaseModel):
+    warehouses: list[WarehouseRead]
+    pagination: Pagination
 
 
 class WarehouseUpdate(BaseModel):
