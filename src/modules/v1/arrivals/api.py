@@ -8,7 +8,7 @@ from sqlalchemy import func
 from core.methods import get_connection
 from core.models import Arrival, ArrivalItem
 from .arrival.api import router as arrival_router
-from .arrival.schemes import ArrivalModel, ArrivalItemWithIdModel
+from .arrival.schemas import ArrivalModel, ArrivalItemWithIdModel
 
 router = APIRouter(prefix="/arrivals")
 router.include_router(arrival_router)

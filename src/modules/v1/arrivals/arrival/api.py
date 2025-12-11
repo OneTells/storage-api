@@ -9,7 +9,7 @@ from core.methods import get_connection
 from core.models import ObjectUnit
 from core.models.arrivals import ArrivalStatus, Arrival, ArrivalItem
 from core.models.object_units import ObjectUnitStatus
-from .schemes import ArrivalItemModel, ArrivalModel, ArrivalItemWithIdModel
+from .schemas import ArrivalItemModel, ArrivalModel, ArrivalItemWithIdModel
 
 router = APIRouter()
 

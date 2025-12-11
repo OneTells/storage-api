@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Body, Path
 
 from core.methods import get_connection
 from core.models.sale_orders import SaleOrderStatus
-from .schemes import SaleOrderItemModel
+from .schemas import SaleOrderItemModel
 
 router = APIRouter()
 

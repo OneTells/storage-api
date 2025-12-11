@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Body, Path
 
 from core.methods import get_connection
 from core.models.write_offs import WriteOffStatus
-from .schemes import WriteOffItemModel
+from .schemas import WriteOffItemModel
 
 router = APIRouter()
 

@@ -9,7 +9,7 @@ from fastapi.security import APIKeyHeader
 
 from core.config import settings
 from core.models import UserSession, User
-from core.schemes import UserModel, UserRole
+from core.schemas import UserModel, UserRole
 from .database import get_connection
 
 

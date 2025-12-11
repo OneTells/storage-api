@@ -13,6 +13,8 @@ async def create_reservation(
     object_unit: Annotated[int, Body(ge=1)],
     connection: Annotated[Connection, Depends(get_connection)]
 ):
+    # Выдовать ключ без каторого нельзя отменить резервирование. Использовать uuid?
+
     ...
 
 

@@ -1,13 +1,13 @@
 from typing import Annotated
 
-from everbase import Select
 from fastapi import APIRouter, Query
+from sqlalchemy import Select
 
 from core.models import Category
 from core.objects import database
 from core.utils.openapi import INTERNAL_ERROR_RESPONSE
 from modules.v1.categories.category.api import router as category_router
-from modules.v1.categories.schemes import CategoryRead
+from modules.v1.categories.schemas import CategoryRead
 
 router = APIRouter(prefix="/categories", tags=["Управление категориями"])
 router.include_router(category_router)
@@ -19,7 +19,6 @@ router.include_router(category_router)
     summary="Получить список всех категорий",
     responses={
         200: {"description": "Список категорий успешно получен"},
-        500: INTERNAL_ERROR_RESPONSE,
     }
 )
 async def get_categories(

@@ -1,19 +1,14 @@
 from typing import Annotated
 
 from asyncpg import Record
-from everbase import Insert, Select, Update, Delete
 from fastapi import APIRouter, Body, HTTPException
+from sqlalchemy import Select, Update
+from sqlalchemy.dialects.postgresql import Insert
 
 from core.models import Category, CategoryObject, CategorySubcategory
 from core.objects import database
 from core.utils.openapi import INTERNAL_ERROR_RESPONSE
-from modules.v1.categories.schemes import (
-    CategoryCreate,
-    CategoryCreateResponse,
-    CategoryRead,
-    CategoryUpdate,
-    CategoryIdType
-)
+from modules.v1.categories.schemas import (CategoryCreate, CategoryCreateResponse, CategoryIdType, CategoryRead, CategoryUpdate)
 
 CATEGORY_NOT_FOUND_RESPONSE = {
     "description": "Категория не существует",
@@ -34,7 +29,6 @@ router = APIRouter()
     summary="Создать новую категорию",
     responses={
         201: {"description": "Идентификатор созданной категории"},
-        500: INTERNAL_ERROR_RESPONSE,
     }
 )
 async def create_category(payload: Annotated[CategoryCreate, Body()]):
@@ -56,7 +50,6 @@ async def create_category(payload: Annotated[CategoryCreate, Body()]):
     responses={
         200: {"description": "Информация о категории"},
         404: CATEGORY_NOT_FOUND_RESPONSE,
-        500: INTERNAL_ERROR_RESPONSE,
     }
 )
 async def get_category(category_id: CategoryIdType):
@@ -85,7 +78,6 @@ async def get_category(category_id: CategoryIdType):
     responses={
         204: {"description": "Категория успешно обновлёна"},
         404: CATEGORY_NOT_FOUND_RESPONSE,
-        500: INTERNAL_ERROR_RESPONSE,
     }
 )
 async def update_category(
@@ -141,7 +133,6 @@ async def update_category(
                 }
             },
         },
-        500: INTERNAL_ERROR_RESPONSE,
     }
 )
 async def delete_category(category_id: CategoryIdType):
@@ -200,33 +191,3 @@ async def delete_category(category_id: CategoryIdType):
         )
 
     return None
-
-
-# Целевая категория существует
-# Нельзя добавить категорию внутрь её же потомка.
-# Категория не равна самой себе
-# Нельзя “привязать” категорию к самой себе как к родителю.
-# Проверить существование объекта
-# объект может быть только в одной категории
-# Учитывать, что дети категории эта одна сущность
-
-# !!!! Один объект в нескольких категотьриях может быть
-
-# @router.post('/{category_id}/subcategory')
-# async def link_subcategory():
-#     ...
-#
-#
-# @router.delete('/{category_id}/subcategory')
-# async def unlink_subcategory():
-#     ...
-#
-#
-# @router.post('/{category_id}/objects')
-# async def link_object():
-#     ...
-#
-#
-# @router.delete('/{category_id}/objects')
-# async def unlink_object():
-#     ...

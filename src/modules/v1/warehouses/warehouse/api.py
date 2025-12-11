@@ -1,18 +1,14 @@
 from typing import Annotated
 
-from asyncpg import Record
-from everbase import Insert, Select, Update
-from fastapi import APIRouter, HTTPException, Body
+from fastapi import APIRouter, Body, HTTPException
 
-from core.models import Warehouse
+from core.methods.response import JSONResponse
 from core.objects import database
 from core.utils.openapi import INTERNAL_ERROR_RESPONSE
-from modules.v1.warehouses.schemes import (
-    WarehouseCreate,
-    WarehouseCreateResponse,
-    WarehouseRead,
-    WarehouseUpdate, WarehouseIdType
+from modules.v1.warehouses.schemas import (
+    WarehouseCreate, WarehouseCreateResponse, WarehouseIdType, WarehouseRead, WarehouseUpdate
 )
+from modules.v1.warehouses.warehouse import repositories
 
 WAREHOUSE_NOT_FOUND_RESPONSE = {
     "description": "Склад не существует",
@@ -33,19 +29,13 @@ router = APIRouter()
     summary="Создать новый склад",
     responses={
         201: {"description": "Идентификатор созданного склада"},
-        500: INTERNAL_ERROR_RESPONSE,
     }
 )
 async def create_warehouse(payload: Annotated[WarehouseCreate, Body()]):
-    async with database.get_connection() as connection:
-        response: Record = await (
-            Insert(Warehouse)
-            .values(**payload.model_dump())
-            .returning(Warehouse.id)
-            .fetch_one(connection)
-        )
+    async with database.acquire() as connection:
+        warehouse_id = await repositories.create_warehouse(connection, payload)
 
-    return {'id': response['id']}
+    return {'id': warehouse_id}
 
 
 @router.get(
@@ -55,27 +45,16 @@ async def create_warehouse(payload: Annotated[WarehouseCreate, Body()]):
     responses={
         200: {"description": "Информация о складе"},
         404: WAREHOUSE_NOT_FOUND_RESPONSE,
-        500: INTERNAL_ERROR_RESPONSE,
     }
 )
 async def get_warehouse(warehouse_id: WarehouseIdType):
-    async with database.get_connection() as connection:
-        response = await (
-            Select(
-                Warehouse.id,
-                Warehouse.name,
-                Warehouse.address,
-                Warehouse.is_active,
-                Warehouse.created_at
-            )
-            .where(Warehouse.id == warehouse_id)
-            .fetch_one(connection, model=lambda x: dict(x))
-        )
+    async with database.acquire() as connection:
+        data = await repositories.get_warehouse_by_id(connection, warehouse_id)
 
-    if response is None:
+    if data is None:
         raise HTTPException(status_code=404, detail="Склад не существует")
 
-    return response
+    return JSONResponse(content=data)
 
 
 @router.put(
@@ -85,23 +64,16 @@ async def get_warehouse(warehouse_id: WarehouseIdType):
     responses={
         204: {"description": "Склад успешно обновлён"},
         404: WAREHOUSE_NOT_FOUND_RESPONSE,
-        500: INTERNAL_ERROR_RESPONSE,
     }
 )
 async def update_warehouse(
     warehouse_id: WarehouseIdType,
     payload: Annotated[WarehouseUpdate, Body()]
 ):
-    async with database.get_connection() as connection:
-        response = await (
-            Update(Warehouse)
-            .values(**payload.model_dump())
-            .where(Warehouse.id == warehouse_id)
-            .returning(Warehouse.id)
-            .fetch_one(connection)
-        )
+    async with database.acquire() as connection:
+        data = await repositories.update_warehouse(connection, warehouse_id, payload)
 
-    if response is None:
+    if data is None:
         raise HTTPException(status_code=404, detail="Склад не существует")
 
     return None

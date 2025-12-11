@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Body, Path
 
 from core.methods import get_connection
 from core.models.transfers import TransferStatus
-from .schemes import TransferItemModel
+from .schemas import TransferItemModel
 
 router = APIRouter()
 

@@ -1,19 +1,14 @@
 from typing import Annotated
 
 from asyncpg import Record
-from everbase import Insert, Select, Update
 from fastapi import APIRouter, Body, HTTPException
+from sqlalchemy import Select, Update
+from sqlalchemy.dialects.postgresql import Insert
 
 from core.models import Supplier
 from core.objects import database
 from core.utils.openapi import INTERNAL_ERROR_RESPONSE
-from modules.v1.suppliers.schemes import (
-    SupplierRead,
-    SupplierCreate,
-    SupplierCreateResponse,
-    SupplierUpdate,
-    SupplierIdType
-)
+from modules.v1.suppliers.schemas import (SupplierCreate, SupplierCreateResponse, SupplierIdType, SupplierRead, SupplierUpdate)
 
 SUPPLIER_NOT_FOUND_RESPONSE = {
     "description": "Поставщик не существует",
@@ -34,7 +29,6 @@ router = APIRouter()
     summary="Создать нового поставщика",
     responses={
         201: {"description": "Идентификатор созданного поставщика"},
-        500: INTERNAL_ERROR_RESPONSE,
     }
 )
 async def create_supplier(payload: Annotated[SupplierCreate, Body()]):
@@ -56,7 +50,6 @@ async def create_supplier(payload: Annotated[SupplierCreate, Body()]):
     responses={
         200: {"description": "Информация о поставщике"},
         404: SUPPLIER_NOT_FOUND_RESPONSE,
-        500: INTERNAL_ERROR_RESPONSE,
     }
 
 )
@@ -86,7 +79,6 @@ async def get_supplier(supplier_id: SupplierIdType):
     responses={
         204: {"description": "Поставщик успешно обновлён"},
         404: SUPPLIER_NOT_FOUND_RESPONSE,
-        500: INTERNAL_ERROR_RESPONSE,
     }
 )
 async def update_supplier(

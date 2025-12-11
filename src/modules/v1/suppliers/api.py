@@ -1,12 +1,13 @@
 from typing import Annotated
 
-from everbase import Select
+
 from fastapi import APIRouter, Query
+from sqlalchemy import Select
 
 from core.models import Supplier
 from core.objects import database
 from core.utils.openapi import INTERNAL_ERROR_RESPONSE
-from modules.v1.suppliers.schemes import SupplierRead
+from modules.v1.suppliers.schemas import SupplierRead
 from modules.v1.suppliers.supplier.api import router as supplier_router
 
 router = APIRouter(prefix="/suppliers", tags=["Управление поставщиками"])
@@ -19,7 +20,6 @@ router.include_router(supplier_router)
     summary="Получить список всех поставщиков",
     responses={
         200: {"description": "Список поставщиков успешно получен"},
-        500: INTERNAL_ERROR_RESPONSE,
     },
 )
 async def get_suppliers(
