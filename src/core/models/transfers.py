@@ -2,13 +2,13 @@ import uuid
 from datetime import datetime
 from enum import auto, StrEnum
 
-from everbase import Base
-from sqlalchemy import BigInteger, Text, ForeignKey, TIMESTAMP, func, Enum, PrimaryKeyConstraint, UUID
+from sqlalchemy import BigInteger, Enum, ForeignKey, func, PrimaryKeyConstraint, Text, TIMESTAMP, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from .user import User
+from .base import Base
 from .object_units import ObjectUnit
 from .suppliers import Supplier
+from .user import User
 from .warehouses import Warehouse
 
 

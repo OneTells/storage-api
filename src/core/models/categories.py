@@ -1,10 +1,10 @@
 from datetime import datetime
 
-from everbase import Base
-from sqlalchemy import BigInteger, TEXT, func, ForeignKey
+from sqlalchemy import BigInteger, ForeignKey, func, TEXT
 from sqlalchemy.dialects.postgresql import TIMESTAMP
-from sqlalchemy.orm import mapped_column, Mapped
+from sqlalchemy.orm import Mapped, mapped_column
 
+from .base import Base
 from .objects import Object
 
 

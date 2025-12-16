@@ -87,8 +87,8 @@ wheels = [
 
 [[package]]
 name = "everbase"
-version = "2.5.3"
-source = { git = "https://github.com/OneTells/everbase#c168c33d26edd09ef13b904d367d81a48e4220ec" }
+version = "3.0.0"
+source = { git = "https://github.com/OneTells/everbase?tag=3.0.3#61a301ee767df851f92966ff40422e8053c80407" }
 dependencies = [
     { name = "asyncpg" },
     { name = "pydantic" },
@@ -375,7 +375,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "everbase", git = "https://github.com/OneTells/everbase" },
+    { name = "everbase", git = "https://github.com/OneTells/everbase?tag=3.0.3" },
     { name = "fastapi", specifier = ">=0.123.0" },
     { name = "gunicorn", specifier = ">=23.0.0" },
     { name = "loguru", specifier = ">=0.7.3" },

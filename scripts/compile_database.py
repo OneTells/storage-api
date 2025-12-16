@@ -9,7 +9,7 @@ from core.models.object_units import ObjectUnitStatus
 from core.models.sale_orders import SaleOrderStatus
 from core.models.transfers import TransferStatus
 from core.models.write_offs import WriteOffStatus
-from core.schemes import UserRole
+from core.schemas import UserRole
 
 
 def main() -> None:

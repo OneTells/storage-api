@@ -18,4 +18,4 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-everbase = { git = "https://github.com/OneTells/everbase" }
+everbase = { git = "https://github.com/OneTells/everbase", tag = "3.0.3" }

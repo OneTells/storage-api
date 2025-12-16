@@ -1,12 +1,12 @@
 import uuid
 from datetime import datetime
 
-from everbase import Base
-from sqlalchemy import Enum, UUID, true, Boolean, ForeignKey, BigInteger, func
+from sqlalchemy import BigInteger, Boolean, Enum, ForeignKey, func, true, UUID
 from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column
 
-from core.schemes.user import UserRole
+from core.schemas.user import UserRole
+from .base import Base
 
 
 class User(Base):

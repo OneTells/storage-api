@@ -4,18 +4,22 @@ from fastapi.requests import Request
 from fastapi.responses import ORJSONResponse
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import RedirectResponse
-from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR, HTTP_422_UNPROCESSABLE_CONTENT
+from starlette.status import HTTP_422_UNPROCESSABLE_CONTENT, HTTP_500_INTERNAL_SERVER_ERROR
 
 from core.config import settings
 from core.methods import Lifespan
 from core.middleware import LoggerMiddleware
+from core.utils.openapi import INTERNAL_ERROR_RESPONSE
 from modules.api import main_router
 
 app = FastAPI(
     title="Storage API",
     version="1.0.0",
     lifespan=Lifespan.run,
-    default_response_class=ORJSONResponse
+    default_response_class=ORJSONResponse,
+    responses={
+        500: INTERNAL_ERROR_RESPONSE,
+    }
 )
 
 app.add_middleware(LoggerMiddleware)

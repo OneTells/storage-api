@@ -1,13 +1,13 @@
 import uuid
 from datetime import datetime
-from enum import StrEnum, auto
+from enum import auto, StrEnum
 
-from everbase import Base
-from sqlalchemy import BigInteger, ForeignKey, Index, UUID, text, Enum
+from sqlalchemy import BigInteger, Enum, ForeignKey, Index, text, UUID
 from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
+from .base import Base
 from .objects import Object
 from .warehouses import Warehouse
 

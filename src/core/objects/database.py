@@ -1,8 +1,9 @@
-from everbase import DatabasePool
+from everbase import Database
 
 from core.config import settings
 
-database = DatabasePool(
-    settings.database_dsn,
-    pool_size=settings.database_pool_size
+database = Database(
+    settings.database_dsn.encoded_string(),
+    min_size=settings.database_pool_size,
+    max_size=settings.database_pool_size
 )

@@ -1,8 +1,9 @@
 from datetime import datetime
 
-from everbase import Base
-from sqlalchemy import TIMESTAMP, func, BigInteger, TEXT, Boolean, true
-from sqlalchemy.orm import mapped_column, Mapped
+from sqlalchemy import BigInteger, Boolean, func, TEXT, TIMESTAMP, true
+from sqlalchemy.orm import Mapped, mapped_column
+
+from .base import Base
 
 
 class Supplier(Base):

@@ -1,9 +1,10 @@
 from datetime import datetime
 
-from everbase import Base
-from sqlalchemy import BigInteger, TEXT, func, Boolean, true
+from sqlalchemy import BigInteger, Boolean, func, TEXT, true
 from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column
+
+from .base import Base
 
 
 class Warehouse(Base):
