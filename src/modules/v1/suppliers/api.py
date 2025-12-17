@@ -17,7 +17,7 @@ router.include_router(supplier_router)
 @router.get(
     '/',
     response_model=list[SupplierRead],
-    summary="Получить список всех поставщиков",
+    summary="Получить список поставщиков",
     responses={
         200: {"description": "Список поставщиков успешно получен"},
     },

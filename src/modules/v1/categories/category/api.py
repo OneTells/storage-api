@@ -29,7 +29,7 @@ router = APIRouter()
     status_code=201,
     summary="Создать новую категорию",
     responses={
-        201: {"description": "Идентификатор созданной категории"},
+        201: {"description": "Категория успешно создан"},
     }
 )
 async def create_category(payload: Annotated[CategoryCreate, Body()]):
@@ -49,7 +49,7 @@ async def create_category(payload: Annotated[CategoryCreate, Body()]):
     response_model=CategoryRead,
     summary="Получить информацию о категории",
     responses={
-        200: {"description": "Информация о категории"},
+        200: {"description": "Информация о категории успешно получена"},
         404: CATEGORY_NOT_FOUND_RESPONSE,
     }
 )

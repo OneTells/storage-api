@@ -28,7 +28,7 @@ router = APIRouter()
     status_code=201,
     summary="Создать новый склад",
     responses={
-        201: {"description": "Идентификатор созданного склада"},
+        201: {"description": "Склад успешно создан"},
     }
 )
 async def create_warehouse(payload: Annotated[WarehouseCreate, Body()]):
@@ -43,7 +43,7 @@ async def create_warehouse(payload: Annotated[WarehouseCreate, Body()]):
     response_model=WarehouseRead,
     summary="Получить информацию о складе",
     responses={
-        200: {"description": "Информация о складе"},
+        200: {"description": "Информация о складе успешно получена"},
         404: WAREHOUSE_NOT_FOUND_RESPONSE,
     }
 )

@@ -28,7 +28,7 @@ router = APIRouter()
     status_code=201,
     summary="Создать нового поставщика",
     responses={
-        201: {"description": "Идентификатор созданного поставщика"},
+        201: {"description": "Поставщик успешно создан"},
     }
 )
 async def create_supplier(payload: Annotated[SupplierCreate, Body()]):
@@ -48,7 +48,7 @@ async def create_supplier(payload: Annotated[SupplierCreate, Body()]):
     response_model=SupplierRead,
     summary="Получить информацию о поставщике",
     responses={
-        200: {"description": "Информация о поставщике"},
+        200: {"description": "Информация о поставщике успешно получена"},
         404: SUPPLIER_NOT_FOUND_RESPONSE,
     }
 

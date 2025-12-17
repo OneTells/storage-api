@@ -16,7 +16,7 @@ router.include_router(category_router)
 @router.get(
     '/',
     response_model=list[CategoryRead],
-    summary="Получить список всех категорий",
+    summary="Получить список категорий",
     responses={
         200: {"description": "Список категорий успешно получен"},
     }

@@ -16,7 +16,7 @@ router.include_router(warehouse_router)
 @router.get(
     "/",
     response_model=WarehousesReadResponse,
-    summary="Получить список всех складов",
+    summary="Получить список складов",
     responses={
         200: {"description": "Список складов успешно получен"},
     },
