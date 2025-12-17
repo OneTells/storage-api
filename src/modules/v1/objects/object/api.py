@@ -2,7 +2,11 @@ from typing import Annotated
 
 from asyncpg import Connection
 from fastapi import APIRouter, Depends, Body, Path
+from typing import Annotated
 
+from fastapi import Path
+
+ObjectIdType = Annotated[int, Path(ge=1, description="Идентификатор объекта")]
 router = APIRouter()
 
 

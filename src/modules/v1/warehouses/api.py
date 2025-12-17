@@ -5,9 +5,8 @@ from fastapi import APIRouter, Query
 from core.methods.response import JSONResponse
 from core.objects import database
 from core.schemas import Pagination
-from core.utils.openapi import INTERNAL_ERROR_RESPONSE
 from modules.v1.warehouses import repositories
-from modules.v1.warehouses.schemas import WarehouseReadResponse
+from modules.v1.warehouses.schemas import WarehousesReadResponse
 from modules.v1.warehouses.warehouse.api import router as warehouse_router
 
 router = APIRouter(prefix="/warehouses", tags=["Управление складом"])
@@ -16,7 +15,7 @@ router.include_router(warehouse_router)
 
 @router.get(
     "/",
-    response_model=WarehouseReadResponse,
+    response_model=WarehousesReadResponse,
     summary="Получить список всех складов",
     responses={
         200: {"description": "Список складов успешно получен"},
@@ -32,7 +31,7 @@ async def get_warehouses(
         total = await repositories.count_warehouses(connection, is_active)
 
     return JSONResponse(
-        content=WarehouseReadResponse(
+        content=WarehousesReadResponse(
             warehouses=warehouses,
             pagination=Pagination(
                 page=page,

@@ -1,27 +1,14 @@
 from typing import Annotated
 
-from fastapi import Path
 from pydantic import AwareDatetime, BaseModel, Field
 
 from core.schemas import Pagination
-
-WarehouseIdType = Annotated[int, Path(ge=1, description="Идентификатор склада")]
 
 IdField = Annotated[int, Field(ge=1, description="Идентификатор склада")]
 NameField = Annotated[str, Field(min_length=1, max_length=200, description="Название склада")]
 AddressField = Annotated[str, Field(min_length=1, max_length=200, description="Адрес склада")]
 IsActiveField = Annotated[bool, Field(description="Флаг активности склада")]
 CreatedAtField = Annotated[AwareDatetime, Field(description="Время создания склада")]
-
-
-class WarehouseCreate(BaseModel):
-    name: NameField
-    address: AddressField
-    is_active: IsActiveField
-
-
-class WarehouseCreateResponse(BaseModel):
-    id: IdField
 
 
 class WarehouseRead(BaseModel):
@@ -32,12 +19,6 @@ class WarehouseRead(BaseModel):
     created_at: CreatedAtField
 
 
-class WarehouseReadResponse(BaseModel):
+class WarehousesReadResponse(BaseModel):
     warehouses: list[WarehouseRead]
     pagination: Pagination
-
-
-class WarehouseUpdate(BaseModel):
-    name: NameField
-    address: AddressField
-    is_active: IsActiveField

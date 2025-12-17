@@ -9,7 +9,7 @@ from core.models import Supplier
 from core.objects import database
 from core.utils.openapi import INTERNAL_ERROR_RESPONSE
 from modules.v1.suppliers.schemas import (SupplierCreate, SupplierCreateResponse, SupplierIdType, SupplierRead, SupplierUpdate)
-
+SupplierIdType = Annotated[int, Path(ge=1, description="Идентификатор поставщика")]
 SUPPLIER_NOT_FOUND_RESPONSE = {
     "description": "Поставщик не существует",
     "content": {

@@ -3,7 +3,8 @@ from sqlalchemy import Select, Update
 from sqlalchemy.dialects.postgresql import Insert
 
 from core.models import Warehouse
-from modules.v1.warehouses.schemas import WarehouseCreate, WarehouseRead, WarehouseUpdate
+from modules.v1.warehouses.schemas import WarehouseRead
+from modules.v1.warehouses.warehouse.schemas import WarehouseCreate, WarehouseUpdate
 
 
 async def create_warehouse(connection: Connection, payload: WarehouseCreate) -> int:
@@ -31,11 +32,11 @@ async def get_warehouse_by_id(connection: Connection, warehouse_id: int) -> Ware
     return await connection.fetch_row(query, model=WarehouseRead)
 
 
-async def update_warehouse(connection: Connection, warehouse_id: int, payload: WarehouseUpdate) -> int:
+async def update_warehouse(connection: Connection, warehouse_id: int, payload: WarehouseUpdate) -> int | None:
     query = (
         Update(Warehouse)
-        .where(Warehouse.id == warehouse_id)
         .values(**payload.model_dump())
+        .where(Warehouse.id == warehouse_id)
         .returning(Warehouse.id)
     )
 

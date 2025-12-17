@@ -9,6 +9,7 @@ from core.models import Category, CategoryObject, CategorySubcategory
 from core.objects import database
 from core.utils.openapi import INTERNAL_ERROR_RESPONSE
 from modules.v1.categories.schemas import (CategoryCreate, CategoryCreateResponse, CategoryIdType, CategoryRead, CategoryUpdate)
+CategoryIdType = Annotated[int, Path(ge=1, description="Идентификатор категории")]
 
 CATEGORY_NOT_FOUND_RESPONSE = {
     "description": "Категория не существует",
