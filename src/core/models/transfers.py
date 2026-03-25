@@ -1,46 +1,30 @@
 import uuid
 from datetime import datetime
-from enum import auto, StrEnum
 
-from sqlalchemy import BigInteger, Enum, ForeignKey, func, PrimaryKeyConstraint, Text, TIMESTAMP, UUID
+from sqlalchemy import BigInteger, ForeignKey, func, Identity, Text, TIMESTAMP, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base
 from .object_units import ObjectUnit
-from .suppliers import Supplier
-from .user import User
+from .users import User
 from .warehouses import Warehouse
-
-
-class TransferStatus(StrEnum):
-    DRAFT = auto()
-    COMPLETED = auto()
 
 
 class Transfer(Base):
     __tablename__ = "transfers"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
 
-    supplier_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(Supplier.id), nullable=False)
+    source_warehouse_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(Warehouse.id))
+    destination_warehouse_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(Warehouse.id))
+    creator_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(User.id))
 
-    name: Mapped[str] = mapped_column(Text, nullable=False)
-    status: Mapped[TransferStatus] = mapped_column(Enum(TransferStatus), nullable=False)
-
-    creator_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(User.id), nullable=False)
-
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
+    name: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
 
 
 class TransferItem(Base):
     __tablename__ = "transfer_items"
 
-    transfer_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(Transfer.id), nullable=False)
-    object_unit_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey(ObjectUnit.id), nullable=False)
-
-    source_warehouse_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(Warehouse.id), nullable=False)
-    destination_warehouse_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(Warehouse.id), nullable=False)
-
-    __table_args__ = (
-        PrimaryKeyConstraint(transfer_id, object_unit_id),
-    )
+    transfer_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(Transfer.id), primary_key=True)
+    object_unit_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey(ObjectUnit.id), primary_key=True)

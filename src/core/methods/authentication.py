@@ -1,94 +1,103 @@
 import hashlib
 import hmac
-from typing import Annotated
+from typing import Annotated, Awaitable, Callable
 
-from asyncpg import Connection
-from everbase import Select
-from fastapi import HTTPException, Depends
-from fastapi.security import APIKeyHeader
+from everbase import Connection
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import ARRAY, func, Select, Text
 
 from core.config import settings
-from core.models import UserSession, User
-from core.schemas import UserModel, UserRole
-from .database import get_connection
+from core.methods import get_connection
+from core.models import Permission, Role, RolePermission, User, UserRole, UserSession
+from core.schemes import UserModel
 
 
 class Token:
+    SEPARATOR = "."
 
     @staticmethod
-    def get_signature(session_id: str, session_secret: str) -> str:
-        return hmac.new(
-            settings.secret_token.encode(),
-            f"{session_id}.{session_secret}".encode(),
-            hashlib.sha256,
-        ).hexdigest()
-
-    @staticmethod
-    def validate(token: str) -> tuple[str, str]:
-        try:
-            session_id, signature = token.split(".", maxsplit=1)
-        except ValueError:
-            raise ValueError("Токен не валиден")
-
-        return session_id, signature
+    def _create_token_signature(session_id: int, secret: str) -> str:
+        return hmac.new(secret.encode(), str(session_id).encode(), hashlib.sha256).hexdigest()
 
     @classmethod
-    def create(cls, session_id: str, session_secret: str) -> str:
-        return f"{session_id}.{cls.get_signature(session_id, session_secret)}"
+    def generate(cls, session_id: int, secret: str) -> str:
+        signature = cls._create_token_signature(session_id, secret)
+        return f"{session_id}{cls.SEPARATOR}{signature}"
 
-
-authorization_header = APIKeyHeader(name="authorization", auto_error=False)
-
-
-class Authentication:
-
-    def __init__(self, *, role: list[UserRole]):
-        self.__role = role
-
-    async def __call__(
-        self,
-        authorization: Annotated[str | None, Depends(authorization_header)],
-        connection: Annotated[Connection, Depends(get_connection)],
-    ) -> UserModel:
-        if authorization is None:
-            raise HTTPException(status_code=401, detail="Необходимо авторизоваться")
-
+    @classmethod
+    def parse(cls, token: str, secret: str) -> int:
         try:
-            scheme, token = authorization.split(" ", 1)
-        except ValueError:
-            raise HTTPException(status_code=403, detail="Токен не валиден")
+            session_id_str, signature = token.split(cls.SEPARATOR, maxsplit=1)
+            session_id = int(session_id_str)
+        except (ValueError, IndexError):
+            raise ValueError
 
-        if scheme.lower() != "bearer":
-            raise HTTPException(status_code=403, detail="Токен не валиден")
+        expected_signature = cls._create_token_signature(session_id, secret)
 
-        try:
-            session_id, signature = Token.validate(token)
-        except ValueError:
-            raise HTTPException(status_code=403, detail="Токен не валиден")
+        if not hmac.compare_digest(signature, expected_signature):
+            raise ValueError
 
-        response = await (
-            Select(
-                User.id,
-                User.role,
-                UserSession.id.label("session_id"),
-                UserSession.secret,
-                UserSession.is_active,
-            )
-            .join(UserSession, UserSession.user_id == User.id)
-            .where(UserSession.id == session_id, User.is_active)
-            .fetch_one(connection)
+        return session_id
+
+
+async def _validate_session(connection: Connection, session_id: int) -> UserModel:
+    user_info = await connection.fetch_row(
+        Select(
+            User.id,
+            UserSession.is_active.label("session_active"),
+            User.is_active.label("user_active"),
+            func.coalesce(func.array_agg(func.distinct(Permission.codename), type_=ARRAY(Text)), []).label("permissions")
+        )
+        .join(User, UserSession.user_id == User.id)
+        .outerjoin(UserRole, User.id == UserRole.user_id)
+        .outerjoin(Role, UserRole.role_id == Role.id)
+        .outerjoin(RolePermission, Role.id == RolePermission.role_id)
+        .outerjoin(Permission, RolePermission.permission_id == Permission.id)
+        .where(UserSession.id == session_id)
+        .group_by(User.id, UserSession.is_active, User.is_active)
+    )
+
+    if user_info is None:
+        raise ValueError("Сессия не существует")
+
+    if not user_info["user_active"]:
+        raise ValueError("Пользователь заблокирован")
+
+    if not user_info["session_active"]:
+        raise ValueError("Сессия не активна")
+
+    return UserModel(id=user_info["id"], permissions=user_info['permissions'])
+
+
+async def get_current_user(
+    connection: Annotated[Connection, Depends(get_connection)],
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(HTTPBearer(auto_error=False))]
+) -> UserModel:
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Требуется аутентификация",
+            headers={"WWW-Authenticate": "Bearer"}
         )
 
-        if response is None:
-            raise HTTPException(status_code=403, detail="Токен не валиден")
+    try:
+        session_id = Token.parse(credentials.credentials, settings.secret_token)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Невалидный токен')
 
-        if not response["is_active"]:
-            raise HTTPException(status_code=403, detail="Сессия не активна")
+    try:
+        return await _validate_session(connection, session_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
 
-        if signature != Token.get_signature(response["session_id"], response["secret"]):
-            raise HTTPException(status_code=403, detail="Токен не валиден")
 
-        if response["role"] not in self.__role:
-            raise HTTPException(status_code=403, detail="Недостаточно прав")
+def require_permissions(*required_permissions: str) -> Callable[..., Awaitable[None]]:
 
-        return UserModel(**response)
+    async def dependency(user: Annotated[UserModel, Depends(get_current_user)]) -> None:
+        if any(x for x in required_permissions if x not in user.permissions):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Недостаточно прав для выполнения действия')
+
+        return None
+
+    return dependency

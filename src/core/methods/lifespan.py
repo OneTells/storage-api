@@ -4,8 +4,8 @@ from typing import Any, AsyncIterator
 from fastapi import FastAPI
 from loguru import logger
 
-from .logging import configure_logging, complete_logging
-from core.objects.database import database
+from core.config import complete_logging, configure_logging
+from core.objects import database
 
 
 class Lifespan:
@@ -13,6 +13,7 @@ class Lifespan:
     @staticmethod
     async def _startup() -> None:
         configure_logging()
+
         await database.connect()
         logger.info("API запушен")
 
@@ -20,6 +21,7 @@ class Lifespan:
     async def _shutdown() -> None:
         await database.close()
         logger.info("API остановлен")
+
         await complete_logging()
 
     @classmethod

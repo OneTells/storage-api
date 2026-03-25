@@ -1,9 +1,9 @@
 import time
 
+from fastapi.requests import Request
+from fastapi.responses import Response
 from loguru import logger
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.requests import Request
-from starlette.responses import Response
 from starlette.types import Scope
 
 
