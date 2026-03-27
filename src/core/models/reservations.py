@@ -1,32 +1,28 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import BigInteger, DOUBLE_PRECISION, ForeignKey, func, Identity, Text, TIMESTAMP, Uuid
+from sqlalchemy import BigInteger, ForeignKey, func, Identity, Text, TIMESTAMP, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base
 from .object_units import ObjectUnit
 from .users import User
-from .warehouses import Warehouse
 
 
-class SaleOrder(Base):
-    __tablename__ = "sale_orders"
+class Reservation(Base):
+    __tablename__ = "reservations"
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
 
-    # Кому продали (Номер заказа)
-    warehouse_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(Warehouse.id))
+    # Кому резерв (Номер заказа)
     creator_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(User.id))
 
     name: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
 
 
-class SaleOrderItem(Base):
-    __tablename__ = "sale_order_items"
+class ReservationItem(Base):
+    __tablename__ = "reservation_items"
 
-    sale_order_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(SaleOrder.id), primary_key=True)
+    reservation_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(Reservation.id), primary_key=True)
     object_unit_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey(ObjectUnit.id), primary_key=True)
-
-    sale_price: Mapped[float] = mapped_column(DOUBLE_PRECISION)
