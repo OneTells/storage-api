@@ -14,7 +14,7 @@ from .warehouses import Warehouse
 class ObjectUnitStatus(StrEnum):
     DEFAULT = auto()
     RESERVED = auto()
-    SOLD = auto()
+    DEFECTIVE = auto()
     WRITTEN_OFF = auto()
 
 
