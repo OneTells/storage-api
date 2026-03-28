@@ -20,7 +20,7 @@ router.include_router(warehouse_router)
     summary="Получить список складов",
     responses={
         200: {"description": "Список складов успешно получен"},
-    },
+    }
 )
 async def get_warehouses(
     connection: Annotated[Connection, Depends(get_connection)],
