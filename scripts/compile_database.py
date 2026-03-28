@@ -1,6 +1,6 @@
 # from everbase import Base
 # from sqlalchemy import Enum
-# from sqlalchemy.dialects.postgresql import dialect, CreateEnumType
+# from sqlalchemy.dialects.postgresql.asyncpg import dialect, CreateEnumType
 # from sqlalchemy.sql.ddl import CreateTable
 #
 # from core.models import *

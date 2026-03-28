@@ -1,9 +1,6 @@
 from typing import Annotated
 
-from fastapi import Path
-from pydantic import BaseModel, AwareDatetime, Field
-
-
+from pydantic import AwareDatetime, BaseModel, Field
 
 IdField = Annotated[int, Field(ge=1, description="Идентификатор поставщика")]
 NameField = Annotated[str, Field(min_length=1, max_length=200, description="Название поставщика")]
