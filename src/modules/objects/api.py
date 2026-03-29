@@ -1,23 +1,29 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Query
+from everbase import Connection
+from fastapi import APIRouter, Depends, Query
 
+from core.methods import get_connection, require_permissions
 from modules.objects.object.api import router as object_router
+from modules.objects.schemes import ObjectsReadResponse
 
 router = APIRouter(prefix="/objects", tags=["Управление объектами"])
 router.include_router(object_router)
 
 
-@router.get('/')
+@router.get(
+    "/",
+    response_model=ObjectsReadResponse,
+    dependencies=[Depends(require_permissions('objects.read'))],
+    summary="Получить список объектов",
+    responses={
+        200: {"description": "Список объектов успешно получен"},
+    }
+)
 async def get_objects(
-    category_id: Annotated[int | None, Query(ge=1, description="Индектификатор категории объекта")] = None,
+    connection: Annotated[Connection, Depends(get_connection)],
+    page: Annotated[int, Query(ge=1, description="Номер страницы")] = 1,
+    limit: Annotated[int, Query(ge=1, le=1000, description="Количество элементов на странице")] = 100,
+    is_active: Annotated[bool | None, Query(description="Фильтр по активности объекта")] = None
 ):
-    ...
-
-
-# @router.get('/tree')
-# async def get_objects_tree(
-# ):
-#     ...
-
-# Нужно ли вообще вот это api
+    raise NotImplementedError

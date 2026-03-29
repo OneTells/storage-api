@@ -26,7 +26,7 @@ class CategorySubcategory(BaseModel):
     subcategory_id: Annotated[int, Field(ge=1, description="Идентификатор подкатегории")]
 
 
-class CatalogRead(BaseModel):
+class CatalogReadResponse(BaseModel):
     categories: Annotated[list[Category], Field(description="Список категорий")]
     objects: Annotated[list[Objects], Field(description="Список объектов")]
     category_object_relations: Annotated[list[CategoryObject], Field(description="Связи категория-объект")]

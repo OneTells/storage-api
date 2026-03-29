@@ -1,55 +1,103 @@
 from typing import Annotated
 
-from asyncpg import Connection
-from fastapi import APIRouter, Depends, Body, Path
-from typing import Annotated
+from everbase import Connection
+from fastapi import APIRouter, Body, Depends, Path
 
-from fastapi import Path
+from core.methods import get_connection, require_permissions
+from core.schemes import ErrorResponse
+from modules.objects.object.schemes import ObjectCreate, ObjectCreateResponse, ObjectUpdate
+from modules.objects.schemes import ObjectRead
 
-ObjectIdType = Annotated[int, Path(ge=1, description="Идентификатор объекта")]
+OBJECT_NOT_FOUND_RESPONSE = {
+    "description": "Объект не найден",
+    "model": ErrorResponse,
+    "content": {
+        "application/json": {
+            "example": {"detail": "Объект не найден"}
+        }
+    }
+}
+
+OBJECT_HAS_RELATIONS_RESPONSE = {
+    "description": "Объект не может быть удален, так как есть связанные записи",
+    "model": ErrorResponse,
+    "content": {
+        "application/json": {
+            "example": {"detail": "Объект не может быть удален, так как есть связанные записи"}
+        }
+    }
+}
+
 router = APIRouter()
 
 
-@router.get('/{object_id}/object-units')
-async def get_object_units(
-    object_id: Annotated[int, Path(ge=1)]
-):
-    ...
-
-
-@router.post('/')
+@router.post(
+    "/",
+    response_model=ObjectCreateResponse,
+    status_code=201,
+    dependencies=[Depends(require_permissions('object.create'))],
+    summary="Создать новый объект",
+    responses={
+        201: {"description": "Объект успешно создан"},
+    }
+)
 async def create_object(
     connection: Annotated[Connection, Depends(get_connection)],
-    name: Annotated[str, Body(min_length=1)],
-    is_active: Annotated[bool, Body()],
+    payload: Annotated[ObjectCreate, Body()]
 ):
-    ...
+    raise NotImplementedError
 
 
-@router.get('/{object_id}')
+@router.get(
+    "/{object_id}",
+    response_model=ObjectRead,
+    dependencies=[Depends(require_permissions('object.read'))],
+    summary="Получить информацию об объекте",
+    responses={
+        200: {"description": "Информация об объекте успешно получена"},
+        404: OBJECT_NOT_FOUND_RESPONSE,
+    }
+)
 async def get_object(
     connection: Annotated[Connection, Depends(get_connection)],
-    object_id: Annotated[int, Path(ge=1)],
+    object_id: Annotated[int, Path(ge=1, description="Идентификатор объекта")]
 ):
-    ...
+    raise NotImplementedError
 
 
-@router.put('/{object_id}')
+@router.put(
+    "/{object_id}",
+    response_model=None,
+    status_code=204,
+    dependencies=[Depends(require_permissions('object.update'))],
+    summary="Обновить информацию об объекте",
+    responses={
+        204: {"description": "Объект успешно обновлён"},
+        404: OBJECT_NOT_FOUND_RESPONSE,
+    }
+)
 async def update_object(
     connection: Annotated[Connection, Depends(get_connection)],
-    object_id: Annotated[int, Path(ge=1)],
-    name: Annotated[str, Body(min_length=1)],
-    is_active: Annotated[bool, Body()],
+    object_id: Annotated[int, Path(ge=1, description="Идентификатор объекта")],
+    payload: Annotated[ObjectUpdate, Body()]
 ):
-    ...
+    raise NotImplementedError
 
 
-@router.delete('/{object_id}')
+@router.delete(
+    "/{object_id}",
+    response_model=None,
+    status_code=204,
+    dependencies=[Depends(require_permissions('object.delete'))],
+    summary="Удалить объект",
+    responses={
+        204: {"description": "Объект успешно удалён"},
+        404: OBJECT_NOT_FOUND_RESPONSE,
+        409: OBJECT_HAS_RELATIONS_RESPONSE,
+    }
+)
 async def delete_object(
     connection: Annotated[Connection, Depends(get_connection)],
-    object_id: Annotated[int, Path(ge=1)],
-    name: Annotated[str, Body(min_length=1)],
-    is_active: Annotated[bool, Body()],
+    object_id: Annotated[int, Path(ge=1, description="Идентификатор объекта")]
 ):
-    # Нужна проверка, если нет записей, то можно удалить. То есть если не было прихода товаров
-    ...
+    raise NotImplementedError
