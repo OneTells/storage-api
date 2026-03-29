@@ -1,19 +1,17 @@
 from typing import Annotated
 
-from asyncpg import Record
-from fastapi import APIRouter, Body, HTTPException
-from sqlalchemy import Select, Update
-from sqlalchemy.dialects.postgresql import Insert
+from everbase import Connection
+from fastapi import APIRouter, Body, Depends, Path
 
-from core.models import Supplier
-from core.objects import database
-from modules.suppliers.schemes import (SupplierCreate, SupplierCreateResponse, SupplierIdType, SupplierRead, SupplierUpdate)
-SupplierIdType = Annotated[int, Path(ge=1, description="Идентификатор поставщика")]
+from core.methods import get_connection, require_permissions
+from modules.suppliers.schemes import SupplierRead
+from modules.suppliers.supplier.schemes import SupplierCreate, SupplierCreateResponse, SupplierUpdate
+
 SUPPLIER_NOT_FOUND_RESPONSE = {
-    "description": "Поставщик не существует",
+    "description": "Поставщик не найден",
     "content": {
         "application/json": {
-            "example": {"detail": "Поставщик не существует"}
+            "example": {"detail": "Поставщик не найден"}
         }
     }
 }
@@ -24,27 +22,24 @@ router = APIRouter()
 @router.post(
     "/",
     response_model=SupplierCreateResponse,
+    dependencies=[Depends(require_permissions('supplier.create'))],
     status_code=201,
     summary="Создать нового поставщика",
     responses={
         201: {"description": "Поставщик успешно создан"},
     }
 )
-async def create_supplier(payload: Annotated[SupplierCreate, Body()]):
-    async with database.get_connection() as connection:
-        response: Record = await (
-            Insert(Supplier)
-            .values(**payload.model_dump())
-            .returning(Supplier.id)
-            .fetch_one(connection)
-        )
-
-    return {'id': response['id']}
+async def create_supplier(
+    connection: Annotated[Connection, Depends(get_connection)],
+    payload: Annotated[SupplierCreate, Body()]
+):
+    raise NotImplementedError
 
 
 @router.get(
     "/{supplier_id}",
     response_model=SupplierRead,
+    dependencies=[Depends(require_permissions('supplier.read'))],
     summary="Получить информацию о поставщике",
     responses={
         200: {"description": "Информация о поставщике успешно получена"},
@@ -52,28 +47,18 @@ async def create_supplier(payload: Annotated[SupplierCreate, Body()]):
     }
 
 )
-async def get_supplier(supplier_id: SupplierIdType):
-    async with database.get_connection() as connection:
-        response = await (
-            Select(
-                Supplier.id,
-                Supplier.name,
-                Supplier.is_active,
-                Supplier.created_at
-            )
-            .where(Supplier.id == supplier_id)
-            .fetch_one(connection, model=SupplierRead)
-        )
-
-    if response is None:
-        raise HTTPException(status_code=404, detail="Поставщик не существует")
-
-    return response
+async def get_supplier(
+    connection: Annotated[Connection, Depends(get_connection)],
+    supplier_id: Annotated[int, Path(ge=1, description="Идентификатор поставщика")]
+):
+    raise NotImplementedError
 
 
 @router.put(
     "/{supplier_id}",
+    response_model=None,
     status_code=204,
+    dependencies=[Depends(require_permissions('supplier.update'))],
     summary="Обновить информацию о поставщике",
     responses={
         204: {"description": "Поставщик успешно обновлён"},
@@ -81,19 +66,8 @@ async def get_supplier(supplier_id: SupplierIdType):
     }
 )
 async def update_supplier(
-    supplier_id: SupplierIdType,
+    connection: Annotated[Connection, Depends(get_connection)],
+    supplier_id: Annotated[int, Path(ge=1, description="Идентификатор поставщика")],
     payload: Annotated[SupplierUpdate, Body()]
 ):
-    async with database.get_connection() as connection:
-        response = await (
-            Update(Supplier)
-            .values(**payload.model_dump())
-            .where(Supplier.id == supplier_id)
-            .returning(Supplier.id)
-            .fetch_one(connection)
-        )
-
-    if response is None:
-        raise HTTPException(status_code=404, detail="Поставщика не существует")
-
-    return None
+    raise NotImplementedError
