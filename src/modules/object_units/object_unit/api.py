@@ -4,18 +4,8 @@ from everbase import Connection
 from fastapi import APIRouter, Depends, Path, Query
 
 from core.methods import get_connection, require_permissions
-from core.schemes import ErrorResponse
+from core.schemes import ErrorCode, ErrorResponse
 from modules.object_units.object_unit.schemes import OperationsReadResponse
-
-OBJECT_UNIT_NOT_FOUND_RESPONSE = {
-    "description": "Единица объекта не найдена",
-    "model": ErrorResponse,
-    "content": {
-        "application/json": {
-            "example": {"detail": "Единица объекта не найдена"}
-        }
-    }
-}
 
 router = APIRouter()
 
@@ -27,7 +17,19 @@ router = APIRouter()
     summary="Получить операции для единицы объекта",
     responses={
         200: {"description": "Список операций успешно получен"},
-        404: OBJECT_UNIT_NOT_FOUND_RESPONSE,
+        404: {
+            "description": "Единица объекта не найдена",
+            "model": ErrorResponse,
+            "content": {
+                "application/json": {
+                    "example": {
+                        "code": ErrorCode.OBJECT_UNIT_NOT_FOUND,
+                        "message": "Единица объекта не найдена",
+                        "params": {}
+                    }
+                }
+            }
+        },
     }
 )
 async def get_operations(

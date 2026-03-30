@@ -3,14 +3,15 @@ import hmac
 from typing import Annotated, Awaitable, Callable
 
 from everbase import Connection
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import ARRAY, func, Select, Text
 
 from core.config import settings
+from core.exceptions import APIException
 from core.methods import get_connection
 from core.models import Permission, Role, RolePermission, User, UserRole, UserSession
-from core.schemes import UserModel
+from core.schemes import ErrorCode, UserModel
 
 
 class Token:
@@ -59,13 +60,23 @@ async def _validate_session(connection: Connection, session_id: int) -> UserMode
     )
 
     if user_info is None:
-        raise ValueError("Сессия не существует")
+        raise APIException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            message="Сессия не существует"
+        )
 
     if not user_info["user_active"]:
-        raise ValueError("Пользователь заблокирован")
+        raise APIException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            message="Пользователь заблокирован"
+        )
 
     if not user_info["session_active"]:
-        raise ValueError("Сессия не активна")
+        raise APIException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            code=ErrorCode.SESSION_INACTIVE,
+            message="Сессия не активна"
+        )
 
     return UserModel(id=user_info["id"], permissions=user_info['permissions'])
 
@@ -75,7 +86,7 @@ async def get_current_user(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(HTTPBearer(auto_error=False))]
 ) -> UserModel:
     if credentials is None:
-        raise HTTPException(
+        raise APIException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Требуется аутентификация",
             headers={"WWW-Authenticate": "Bearer"}
@@ -84,19 +95,22 @@ async def get_current_user(
     try:
         session_id = Token.parse(credentials.credentials, settings.secret_token)
     except ValueError:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Невалидный токен')
+        raise APIException(code=ErrorCode.INVALID_TOKEN, message='Невалидный токен')
 
     try:
         return await _validate_session(connection, session_id)
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+    except APIException:
+        raise
 
 
 def require_permissions(*required_permissions: str) -> Callable[..., Awaitable[None]]:
 
     async def dependency(user: Annotated[UserModel, Depends(get_current_user)]) -> None:
         if any(x for x in required_permissions if x not in user.permissions):
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Недостаточно прав для выполнения действия')
+            raise APIException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                message='Недостаточно прав для выполнения действия'
+            )
 
         return None
 

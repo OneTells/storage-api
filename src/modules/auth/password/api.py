@@ -5,6 +5,7 @@ from fastapi import APIRouter, Body, Depends
 
 from core.methods import get_connection
 from core.schemes import ErrorResponse
+from core.schemes.openapi_responses import ErrorCode
 from modules.auth.password.schemes import AuthPayload
 from modules.auth.schemes import TokenResponse
 
@@ -23,7 +24,11 @@ router = APIRouter()
             "model": ErrorResponse,
             "content": {
                 "application/json": {
-                    "example": {"detail": "Неверные учетные данные"}
+                    "example": {
+                        "code": ErrorCode.INVALID_CREDENTIALS,
+                        "message": "Неверные учетные данные",
+                        "params": {}
+                    }
                 }
             }
         }

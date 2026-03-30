@@ -4,29 +4,9 @@ from everbase import Connection
 from fastapi import APIRouter, Body, Depends, Path
 
 from core.methods import get_connection, require_permissions
-from core.schemes import ErrorResponse
+from core.schemes import ErrorCode, ErrorResponse
 from modules.objects.object.schemes import ObjectCreate, ObjectCreateResponse, ObjectUpdate
 from modules.objects.schemes import ObjectRead
-
-OBJECT_NOT_FOUND_RESPONSE = {
-    "description": "Объект не найден",
-    "model": ErrorResponse,
-    "content": {
-        "application/json": {
-            "example": {"detail": "Объект не найден"}
-        }
-    }
-}
-
-OBJECT_HAS_RELATIONS_RESPONSE = {
-    "description": "Объект не может быть удален, так как есть связанные записи",
-    "model": ErrorResponse,
-    "content": {
-        "application/json": {
-            "example": {"detail": "Объект не может быть удален, так как есть связанные записи"}
-        }
-    }
-}
 
 router = APIRouter()
 
@@ -55,7 +35,19 @@ async def create_object(
     summary="Получить информацию об объекте",
     responses={
         200: {"description": "Информация об объекте успешно получена"},
-        404: OBJECT_NOT_FOUND_RESPONSE,
+        404: {
+            "description": "Объект не найден",
+            "model": ErrorResponse,
+            "content": {
+                "application/json": {
+                    "example": {
+                        "code": ErrorCode.OBJECT_NOT_FOUND,
+                        "message": "Объект не найден",
+                        "params": {}
+                    }
+                }
+            }
+        },
     }
 )
 async def get_object(
@@ -73,7 +65,19 @@ async def get_object(
     summary="Обновить информацию об объекте",
     responses={
         204: {"description": "Объект успешно обновлён"},
-        404: OBJECT_NOT_FOUND_RESPONSE,
+        404: {
+            "description": "Объект не найден",
+            "model": ErrorResponse,
+            "content": {
+                "application/json": {
+                    "example": {
+                        "code": ErrorCode.OBJECT_NOT_FOUND,
+                        "message": "Объект не найден",
+                        "params": {}
+                    }
+                }
+            }
+        },
     }
 )
 async def update_object(
@@ -92,8 +96,32 @@ async def update_object(
     summary="Удалить объект",
     responses={
         204: {"description": "Объект успешно удалён"},
-        404: OBJECT_NOT_FOUND_RESPONSE,
-        409: OBJECT_HAS_RELATIONS_RESPONSE,
+        404: {
+            "description": "Объект не найден",
+            "model": ErrorResponse,
+            "content": {
+                "application/json": {
+                    "example": {
+                        "code": ErrorCode.OBJECT_NOT_FOUND,
+                        "message": "Объект не найден",
+                        "params": {}
+                    }
+                }
+            }
+        },
+        409: {
+            "description": "Объект не может быть удален, так как есть связанные записи",
+            "model": ErrorResponse,
+            "content": {
+                "application/json": {
+                    "example": {
+                        "code": ErrorCode.OBJECT_HAS_RELATIONS,
+                        "message": "Объект не может быть удален, так как есть связанные записи",
+                        "params": {}
+                    }
+                }
+            }
+        },
     }
 )
 async def delete_object(

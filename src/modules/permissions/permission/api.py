@@ -4,38 +4,9 @@ from everbase import Connection
 from fastapi import APIRouter, Body, Depends, Path
 
 from core.methods import get_connection, require_permissions
-from core.schemes import ErrorResponse
+from core.schemes import ErrorCode, ErrorResponse
 from modules.permissions.permission.schemes import PermissionCreate, PermissionCreateResponse, PermissionUpdate
 from modules.permissions.schemes import PermissionRead
-
-PERMISSION_NOT_FOUND_RESPONSE = {
-    "description": "Разрешение не найдено",
-    "model": ErrorResponse,
-    "content": {
-        "application/json": {
-            "example": {"detail": "Разрешение не найдено"}
-        }
-    }
-}
-
-PERMISSION_ALREADY_EXISTS_RESPONSE = {
-    "description": "Разрешение с таким именем или кодовым именем уже существует",
-    "model": ErrorResponse,
-    "content": {
-        "application/json": {
-            "examples": {
-                "name_exists": {
-                    "summary": "Разрешение с таким именем уже существует",
-                    "value": {"detail": "Разрешение с таким именем уже существует"}
-                },
-                "codename_exists": {
-                    "summary": "Разрешение с таким кодовым именем уже существует",
-                    "value": {"detail": "Разрешение с таким кодовым именем уже существует"}
-                },
-            }
-        }
-    }
-}
 
 router = APIRouter()
 
@@ -48,7 +19,32 @@ router = APIRouter()
     summary="Создать новое разрешение",
     responses={
         201: {"description": "Разрешение успешно создано"},
-        409: PERMISSION_ALREADY_EXISTS_RESPONSE,
+        409: {
+            "description": "Разрешение с таким именем или кодовым именем уже существует",
+            "model": ErrorResponse,
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "name_exists": {
+                            "summary": "Разрешение с таким именем уже существует",
+                            "value": {
+                                "code": ErrorCode.PERMISSION_NAME_ALREADY_EXISTS,
+                                "message": "Разрешение с таким именем уже существует",
+                                "params": {}
+                            }
+                        },
+                        "codename_exists": {
+                            "summary": "Разрешение с таким кодовым именем уже существует",
+                            "value": {
+                                "code": ErrorCode.PERMISSION_CODENAME_ALREADY_EXISTS,
+                                "message": "Разрешение с таким кодовым именем уже существует",
+                                "params": {}
+                            }
+                        },
+                    }
+                }
+            }
+        },
     }
 )
 async def create_permission(
@@ -65,7 +61,19 @@ async def create_permission(
     summary="Получить информацию о разрешении",
     responses={
         200: {"description": "Информация о разрешении успешно получена"},
-        404: PERMISSION_NOT_FOUND_RESPONSE,
+        404: {
+            "description": "Разрешение не найдено",
+            "model": ErrorResponse,
+            "content": {
+                "application/json": {
+                    "example": {
+                        "code": ErrorCode.PERMISSION_NOT_FOUND,
+                        "message": "Разрешение не найдено",
+                        "params": {}
+                    }
+                }
+            }
+        },
     }
 )
 async def get_permission(
@@ -83,8 +91,45 @@ async def get_permission(
     summary="Обновить информацию о разрешении",
     responses={
         204: {"description": "Разрешение успешно обновлено"},
-        404: PERMISSION_NOT_FOUND_RESPONSE,
-        409: PERMISSION_ALREADY_EXISTS_RESPONSE,
+        404: {
+            "description": "Разрешение не найдено",
+            "model": ErrorResponse,
+            "content": {
+                "application/json": {
+                    "example": {
+                        "code": ErrorCode.PERMISSION_NOT_FOUND,
+                        "message": "Разрешение не найдено",
+                        "params": {}
+                    }
+                }
+            }
+        },
+        409: {
+            "description": "Разрешение с таким именем или кодовым именем уже существует",
+            "model": ErrorResponse,
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "name_exists": {
+                            "summary": "Разрешение с таким именем уже существует",
+                            "value": {
+                                "code": ErrorCode.PERMISSION_NAME_ALREADY_EXISTS,
+                                "message": "Разрешение с таким именем уже существует",
+                                "params": {}
+                            }
+                        },
+                        "codename_exists": {
+                            "summary": "Разрешение с таким кодовым именем уже существует",
+                            "value": {
+                                "code": ErrorCode.PERMISSION_CODENAME_ALREADY_EXISTS,
+                                "message": "Разрешение с таким кодовым именем уже существует",
+                                "params": {}
+                            }
+                        },
+                    }
+                }
+            }
+        },
     }
 )
 async def update_permission(
@@ -103,7 +148,19 @@ async def update_permission(
     summary="Удалить разрешение",
     responses={
         204: {"description": "Разрешение успешно удалено"},
-        404: PERMISSION_NOT_FOUND_RESPONSE,
+        404: {
+            "description": "Разрешение не найдено",
+            "model": ErrorResponse,
+            "content": {
+                "application/json": {
+                    "example": {
+                        "code": ErrorCode.PERMISSION_NOT_FOUND,
+                        "message": "Разрешение не найдено",
+                        "params": {}
+                    }
+                }
+            }
+        },
     }
 )
 async def delete_permission(

@@ -4,17 +4,9 @@ from everbase import Connection
 from fastapi import APIRouter, Body, Depends, Path
 
 from core.methods import get_connection, require_permissions
+from core.schemes import ErrorCode, ErrorResponse
 from modules.suppliers.schemes import SupplierRead
 from modules.suppliers.supplier.schemes import SupplierCreate, SupplierCreateResponse, SupplierUpdate
-
-SUPPLIER_NOT_FOUND_RESPONSE = {
-    "description": "Поставщик не найден",
-    "content": {
-        "application/json": {
-            "example": {"detail": "Поставщик не найден"}
-        }
-    }
-}
 
 router = APIRouter()
 
@@ -43,7 +35,19 @@ async def create_supplier(
     summary="Получить информацию о поставщике",
     responses={
         200: {"description": "Информация о поставщике успешно получена"},
-        404: SUPPLIER_NOT_FOUND_RESPONSE,
+        404: {
+            "description": "Поставщик не найден",
+            "model": ErrorResponse,
+            "content": {
+                "application/json": {
+                    "example": {
+                        "code": ErrorCode.SUPPLIER_NOT_FOUND,
+                        "message": "Поставщик не найден",
+                        "params": {}
+                    }
+                }
+            }
+        },
     }
 
 )
@@ -62,7 +66,19 @@ async def get_supplier(
     summary="Обновить информацию о поставщике",
     responses={
         204: {"description": "Поставщик успешно обновлён"},
-        404: SUPPLIER_NOT_FOUND_RESPONSE,
+        404: {
+            "description": "Поставщик не найден",
+            "model": ErrorResponse,
+            "content": {
+                "application/json": {
+                    "example": {
+                        "code": ErrorCode.SUPPLIER_NOT_FOUND,
+                        "message": "Поставщик не найден",
+                        "params": {}
+                    }
+                }
+            }
+        },
     }
 )
 async def update_supplier(

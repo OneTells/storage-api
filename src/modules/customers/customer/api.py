@@ -4,19 +4,9 @@ from everbase import Connection
 from fastapi import APIRouter, Body, Depends, Path
 
 from core.methods import get_connection, require_permissions
-from core.schemes import ErrorResponse
+from core.schemes import ErrorCode, ErrorResponse
 from modules.customers.customer.schemes import CustomerCreate, CustomerCreateResponse, CustomerUpdate
 from modules.customers.schemes import CustomerRead
-
-CUSTOMER_NOT_FOUND_RESPONSE = {
-    "description": "Клиент не найден",
-    "model": ErrorResponse,
-    "content": {
-        "application/json": {
-            "example": {"detail": "Клиент не найден"}
-        }
-    }
-}
 
 router = APIRouter()
 
@@ -45,7 +35,19 @@ async def create_customer(
     summary="Получить информацию о клиенте",
     responses={
         200: {"description": "Информация о клиенте успешно получена"},
-        404: CUSTOMER_NOT_FOUND_RESPONSE,
+        404: {
+            "description": "Клиент не найден",
+            "model": ErrorResponse,
+            "content": {
+                "application/json": {
+                    "example": {
+                        "code": ErrorCode.CUSTOMER_NOT_FOUND,
+                        "message": "Клиент не найден",
+                        "params": {}
+                    }
+                }
+            }
+        },
     }
 )
 async def get_customer(
@@ -63,7 +65,19 @@ async def get_customer(
     summary="Обновить информацию о клиенте",
     responses={
         204: {"description": "Клиент успешно обновлён"},
-        404: CUSTOMER_NOT_FOUND_RESPONSE,
+        404: {
+            "description": "Клиент не найден",
+            "model": ErrorResponse,
+            "content": {
+                "application/json": {
+                    "example": {
+                        "code": ErrorCode.CUSTOMER_NOT_FOUND,
+                        "message": "Клиент не найден",
+                        "params": {}
+                    }
+                }
+            }
+        },
     }
 )
 async def update_customer(

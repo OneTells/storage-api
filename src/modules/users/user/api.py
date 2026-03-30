@@ -4,31 +4,9 @@ from everbase import Connection
 from fastapi import APIRouter, Body, Depends, Path
 
 from core.methods import get_connection, require_permissions
-from core.schemes import ErrorResponse
+from core.schemes import ErrorCode, ErrorResponse
 from modules.users.schemes import UserRead
 from modules.users.user.schemes import UserCreate, UserCreateResponse, UserUpdate
-
-USER_NOT_FOUND_RESPONSE = {
-    "description": "Пользователь не найден",
-    "model": ErrorResponse,
-    "content": {
-        "application/json": {
-            "example": {"detail": "Пользователь не найден"}
-        }
-    }
-}
-
-USER_ALREADY_EXISTS_RESPONSE = {
-    "description": "Пользователь с таким логином уже существует",
-    "model": ErrorResponse,
-    "content": {
-        "application/json": {
-            "example": {
-                {"detail": "Пользователь с таким логином уже существует"}
-            }
-        }
-    }
-}
 
 router = APIRouter()
 
@@ -41,7 +19,19 @@ router = APIRouter()
     summary="Создать нового пользователя",
     responses={
         201: {"description": "Пользователь успешно создан"},
-        409: USER_ALREADY_EXISTS_RESPONSE,
+        409: {
+            "description": "Пользователь с таким логином уже существует",
+            "model": ErrorResponse,
+            "content": {
+                "application/json": {
+                    "example": {
+                        "code": ErrorCode.USER_LOGIN_ALREADY_EXISTS,
+                        "message": "Пользователь с таким логином уже существует",
+                        "params": {}
+                    }
+                }
+            }
+        },
     }
 )
 async def create_user(
@@ -58,7 +48,19 @@ async def create_user(
     summary="Получить информацию о пользователе",
     responses={
         200: {"description": "Информация о пользователе успешно получена"},
-        404: USER_NOT_FOUND_RESPONSE,
+        404: {
+            "description": "Пользователь не найден",
+            "model": ErrorResponse,
+            "content": {
+                "application/json": {
+                    "example": {
+                        "code": ErrorCode.USER_NOT_FOUND,
+                        "message": "Пользователь не найден",
+                        "params": {}
+                    }
+                }
+            }
+        },
     }
 )
 async def get_user(
@@ -76,8 +78,32 @@ async def get_user(
     summary="Обновить информацию о пользователе",
     responses={
         204: {"description": "Пользователь успешно обновлён"},
-        404: USER_NOT_FOUND_RESPONSE,
-        409: USER_ALREADY_EXISTS_RESPONSE,
+        404: {
+            "description": "Пользователь не найден",
+            "model": ErrorResponse,
+            "content": {
+                "application/json": {
+                    "example": {
+                        "code": ErrorCode.USER_NOT_FOUND,
+                        "message": "Пользователь не найден",
+                        "params": {}
+                    }
+                }
+            }
+        },
+        409: {
+            "description": "Пользователь с таким логином уже существует",
+            "model": ErrorResponse,
+            "content": {
+                "application/json": {
+                    "example": {
+                        "code": ErrorCode.USER_LOGIN_ALREADY_EXISTS,
+                        "message": "Пользователь с таким логином уже существует",
+                        "params": {}
+                    }
+                }
+            }
+        },
     }
 )
 async def update_user(
@@ -96,7 +122,19 @@ async def update_user(
     summary="Удалить пользователя",
     responses={
         204: {"description": "Пользователь успешно удалён"},
-        404: USER_NOT_FOUND_RESPONSE,
+        404: {
+            "description": "Пользователь не найден",
+            "model": ErrorResponse,
+            "content": {
+                "application/json": {
+                    "example": {
+                        "code": ErrorCode.USER_NOT_FOUND,
+                        "message": "Пользователь не найден",
+                        "params": {}
+                    }
+                }
+            }
+        },
     }
 )
 async def delete_user(
@@ -122,11 +160,19 @@ async def delete_user(
                     "examples": {
                         "user_not_found": {
                             "summary": "Пользователь не найден",
-                            "value": {"detail": "Пользователь не найден"}
+                            "value": {
+                                "code": ErrorCode.USER_NOT_FOUND,
+                                "message": "Пользователь не найден",
+                                "params": {}
+                            }
                         },
                         "role_not_found": {
                             "summary": "Роль не найдена",
-                            "value": {"detail": "Роль не найдена"}
+                            "value": {
+                                "code": ErrorCode.ROLE_NOT_FOUND,
+                                "message": "Роль не найдена",
+                                "params": {}
+                            }
                         },
                     }
                 }
@@ -158,11 +204,19 @@ async def assign_role_to_user(
                     "examples": {
                         "user_not_found": {
                             "summary": "Пользователь не найден",
-                            "value": {"detail": "Пользователь не найден"}
+                            "value": {
+                                "code": ErrorCode.USER_NOT_FOUND,
+                                "message": "Пользователь не найден",
+                                "params": {}
+                            }
                         },
                         "role_not_found": {
                             "summary": "Роль не найдена",
-                            "value": {"detail": "Роль не найдена"}
+                            "value": {
+                                "code": ErrorCode.ROLE_NOT_FOUND,
+                                "message": "Роль не найдена",
+                                "params": {}
+                            }
                         },
                     }
                 }
