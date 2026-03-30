@@ -3,15 +3,14 @@ import hmac
 from typing import Annotated, Awaitable, Callable
 
 from everbase import Connection
-from fastapi import Depends
+from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import ARRAY, func, Select, Text
 
 from core.config import settings
-from core.exceptions import APIException
 from core.methods import get_connection
 from core.models import Permission, Role, RolePermission, User, UserRole, UserSession
-from core.schemes import ErrorCode, UserModel
+from core.schemes import UserModel
 
 
 class Token:
@@ -60,13 +59,13 @@ async def _validate_session(connection: Connection, session_id: int) -> UserMode
     )
 
     if user_info is None:
-        raise APIException(code=ErrorCode.SESSION_NOT_FOUND, message='Сессия не существует')
+        raise HTTPException(status_code=401, detail='Сессия не существует')
 
     if not user_info['user_active']:
-        raise APIException(code=ErrorCode.USER_BANNED, message='Пользователь заблокирован')
+        raise HTTPException(status_code=403, detail='Пользователь заблокирован')
 
     if not user_info['session_active']:
-        raise APIException(code=ErrorCode.SESSION_INACTIVE, message='Сессия не активна')
+        raise HTTPException(status_code=401, detail='Сессия не активна')
 
     return UserModel(id=user_info['id'], permissions=user_info['permissions'])
 
@@ -76,28 +75,25 @@ async def get_current_user(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(HTTPBearer(auto_error=False))]
 ) -> UserModel:
     if credentials is None:
-        raise APIException(
-            code=ErrorCode.UNAUTHORIZED,
-            message='Требуется аутентификация',
+        raise HTTPException(
+            status_code=401,
+            detail='Требуется аутентификация',
             headers={'WWW-Authenticate': 'Bearer'},
         )
 
     try:
         session_id = Token.parse(credentials.credentials, settings.secret_token)
     except ValueError:
-        raise APIException(code=ErrorCode.INVALID_TOKEN, message='Невалидный токен')
+        raise HTTPException(status_code=401, detail='Невалидный токен')
 
-    try:
-        return await _validate_session(connection, session_id)
-    except APIException:
-        raise
+    return await _validate_session(connection, session_id)
 
 
 def require_permissions(*required_permissions: str) -> Callable[..., Awaitable[None]]:
 
     async def dependency(user: Annotated[UserModel, Depends(get_current_user)]) -> None:
         if any(x for x in required_permissions if x not in user.permissions):
-            raise APIException(code=ErrorCode.INSUFFICIENT_PERMISSIONS, message='Недостаточно прав для выполнения действия')
+            raise HTTPException(status_code=403, detail='Недостаточно прав для выполнения действия')
 
         return None
 
