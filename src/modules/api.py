@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends
 from core.methods import get_current_user
 from core.schemes import FORBIDDEN_RESPONSE, UNAUTHORIZED_RESPONSE
 from modules.auth.api import router as auth_module_router
+from modules.categories.api import router as categories_router
 from modules.customers.api import router as customers_router
 from modules.object_units.api import router as object_units_router
 from modules.objects.api import router as objects_router
@@ -20,6 +21,7 @@ router_with_auth = APIRouter(
         403: FORBIDDEN_RESPONSE,
     }
 )
+router_with_auth.include_router(categories_router)
 router_with_auth.include_router(customers_router)
 router_with_auth.include_router(object_units_router)
 router_with_auth.include_router(objects_router)

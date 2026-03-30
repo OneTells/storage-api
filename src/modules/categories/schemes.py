@@ -1,30 +1,41 @@
-# from typing import Annotated
-#
-# from pydantic import AwareDatetime, BaseModel, Field
-#
-# IdField = Annotated[int, Field(ge=1, description="Идентификатор категории")]
-# NameField = Annotated[str, Field(min_length=1, max_length=200, description="Название категории")]
-# DescriptionField = Annotated[str, Field(min_length=1, max_length=200, description="Описание категории")]
-# CreatedAtField = Annotated[AwareDatetime, Field(description="Время создания категории")]
-#
-#
-# class CategoryCreate(BaseModel):
-#     name: NameField
-#     description: DescriptionField
-#
-#
-# class CategoryCreateResponse(BaseModel):
-#     id: IdField
-#
-#
-# class CategoryRead(BaseModel):
-#     id: IdField
-#     name: NameField
-#     description: DescriptionField
-#
-#     created_at: CreatedAtField
-#
-#
-# class CategoryUpdate(BaseModel):
-#     name: NameField
-#     description: DescriptionField
+from typing import Annotated
+
+from pydantic import AwareDatetime, BaseModel, Field
+
+from core.schemes import Pagination
+
+IdField = Annotated[int, Field(ge=1, description="Идентификатор категории")]
+NameField = Annotated[str, Field(min_length=1, max_length=200, description="Название категории")]
+DescriptionField = Annotated[str, Field(min_length=1, max_length=1000, description="Описание категории")]
+CreatedAtField = Annotated[AwareDatetime, Field(description="Время создания категории")]
+
+
+class CategoryCreate(BaseModel):
+    name: NameField
+    description: DescriptionField
+
+
+class CategoryCreateResponse(BaseModel):
+    id: IdField
+
+
+class CategoryRead(BaseModel):
+    id: IdField
+    name: NameField
+    description: DescriptionField
+    created_at: CreatedAtField
+
+
+class CategoryUpdate(BaseModel):
+    name: NameField
+    description: DescriptionField
+
+
+class CategoriesReadResponse(BaseModel):
+    categories: list[CategoryRead]
+    pagination: Pagination
+
+
+class SubcategoriesReadResponse(BaseModel):
+    subcategories: list[CategoryRead]
+    pagination: Pagination
