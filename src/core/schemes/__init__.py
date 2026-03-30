@@ -1,6 +1,11 @@
 from .authentication import UserModel
-from .openapi_responses import (
-    ErrorCode, ErrorResponse, FORBIDDEN_RESPONSE, INTERNAL_ERROR_RESPONSE, UNAUTHORIZED_RESPONSE, UNPROCESSABLE_ENTITY_RESPONSE
+from .responses import (
+    ErrorCode,
+    ErrorResponse,
+    FORBIDDEN_RESPONSE,
+    INTERNAL_ERROR_RESPONSE,
+    UNAUTHORIZED_RESPONSE,
+    UNPROCESSABLE_ENTITY_RESPONSE,
 )
 from .pagination import Pagination
 

@@ -19,7 +19,7 @@ router.include_router(warehouse_router)
     dependencies=[Depends(require_permissions('warehouses.read'))],
     summary="Получить список складов",
     responses={
-        200: {"description": "Список складов успешно получен"},
+        200: {"description": "Список складов успешно получен"}
     }
 )
 async def get_warehouses(

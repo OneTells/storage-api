@@ -17,7 +17,7 @@ router.include_router(object_router)
     dependencies=[Depends(require_permissions('objects.read'))],
     summary="Получить список объектов",
     responses={
-        200: {"description": "Список объектов успешно получен"},
+        200: {"description": "Список объектов успешно получен"}
     }
 )
 async def get_objects(

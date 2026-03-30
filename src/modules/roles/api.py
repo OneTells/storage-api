@@ -17,7 +17,7 @@ router.include_router(role_router)
     dependencies=[Depends(require_permissions('roles.read'))],
     summary="Получить список ролей",
     responses={
-        200: {"description": "Список ролей успешно получен"},
+        200: {"description": "Список ролей успешно получен"}
     }
 )
 async def get_roles(

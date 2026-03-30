@@ -3,7 +3,7 @@ import hmac
 from typing import Annotated, Awaitable, Callable
 
 from everbase import Connection
-from fastapi import Depends, status
+from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import ARRAY, func, Select, Text
 
@@ -60,25 +60,15 @@ async def _validate_session(connection: Connection, session_id: int) -> UserMode
     )
 
     if user_info is None:
-        raise APIException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            message="Сессия не существует"
-        )
+        raise APIException(code=ErrorCode.SESSION_NOT_FOUND, message='Сессия не существует')
 
-    if not user_info["user_active"]:
-        raise APIException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            message="Пользователь заблокирован"
-        )
+    if not user_info['user_active']:
+        raise APIException(code=ErrorCode.USER_BANNED, message='Пользователь заблокирован')
 
-    if not user_info["session_active"]:
-        raise APIException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            code=ErrorCode.SESSION_INACTIVE,
-            message="Сессия не активна"
-        )
+    if not user_info['session_active']:
+        raise APIException(code=ErrorCode.SESSION_INACTIVE, message='Сессия не активна')
 
-    return UserModel(id=user_info["id"], permissions=user_info['permissions'])
+    return UserModel(id=user_info['id'], permissions=user_info['permissions'])
 
 
 async def get_current_user(
@@ -87,9 +77,9 @@ async def get_current_user(
 ) -> UserModel:
     if credentials is None:
         raise APIException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Требуется аутентификация",
-            headers={"WWW-Authenticate": "Bearer"}
+            code=ErrorCode.UNAUTHORIZED,
+            message='Требуется аутентификация',
+            headers={'WWW-Authenticate': 'Bearer'},
         )
 
     try:
@@ -107,10 +97,7 @@ def require_permissions(*required_permissions: str) -> Callable[..., Awaitable[N
 
     async def dependency(user: Annotated[UserModel, Depends(get_current_user)]) -> None:
         if any(x for x in required_permissions if x not in user.permissions):
-            raise APIException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                message='Недостаточно прав для выполнения действия'
-            )
+            raise APIException(code=ErrorCode.INSUFFICIENT_PERMISSIONS, message='Недостаточно прав для выполнения действия')
 
         return None
 

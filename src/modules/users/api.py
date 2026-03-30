@@ -17,7 +17,7 @@ router.include_router(user_router)
     dependencies=[Depends(require_permissions('users.read'))],
     summary="Получить список пользователей",
     responses={
-        200: {"description": "Список пользователей успешно получен"},
+        200: {"description": "Список пользователей успешно получен"}
     }
 )
 async def get_users(

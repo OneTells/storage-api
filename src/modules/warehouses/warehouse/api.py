@@ -5,9 +5,10 @@ from fastapi import APIRouter, Body, Depends, Path
 
 from core.exceptions import APIException
 from core.methods import get_connection, require_permissions
-from core.schemes import ErrorCode, ErrorResponse
+from core.schemes import ErrorCode
 from modules.warehouses.schemes import WarehouseRead
 from modules.warehouses.warehouse import repositories
+from modules.warehouses.warehouse.responses import WAREHOUSE_NOT_FOUND
 from modules.warehouses.warehouse.schemes import WarehouseCreate, WarehouseCreateResponse, WarehouseUpdate
 
 router = APIRouter()
@@ -38,19 +39,7 @@ async def create_warehouse(
     summary="Получить информацию о складе",
     responses={
         200: {"description": "Информация о складе успешно получена"},
-        404: {
-            "description": "Склад не найден",
-            "model": ErrorResponse,
-            "content": {
-                "application/json": {
-                    "example": {
-                        "code": ErrorCode.WAREHOUSE_NOT_FOUND,
-                        "message": "Склад не найден",
-                        "params": {}
-                    }
-                }
-            }
-        },
+        404: WAREHOUSE_NOT_FOUND,
     }
 )
 async def get_warehouse(
@@ -60,11 +49,7 @@ async def get_warehouse(
     warehouse = await repositories.get_warehouse_by_id(connection, warehouse_id)
 
     if warehouse is None:
-        raise APIException(
-            status_code=404,
-            code=ErrorCode.WAREHOUSE_NOT_FOUND,
-            message='Склад не найден'
-        )
+        raise APIException(code=ErrorCode.WAREHOUSE_NOT_FOUND, message='Склад не найден')
 
     return warehouse
 
@@ -77,19 +62,7 @@ async def get_warehouse(
     summary="Обновить информацию о складе",
     responses={
         204: {"description": "Склад успешно обновлён"},
-        404: {
-            "description": "Склад не найден",
-            "model": ErrorResponse,
-            "content": {
-                "application/json": {
-                    "example": {
-                        "code": ErrorCode.WAREHOUSE_NOT_FOUND,
-                        "message": "Склад не найден",
-                        "params": {}
-                    }
-                }
-            }
-        },
+        404: WAREHOUSE_NOT_FOUND,
     }
 )
 async def update_warehouse(
@@ -100,10 +73,6 @@ async def update_warehouse(
     data = await repositories.update_warehouse(connection, warehouse_id, payload)
 
     if data is None:
-        raise APIException(
-            status_code=404,
-            code=ErrorCode.WAREHOUSE_NOT_FOUND,
-            message='Склад не найден'
-        )
+        raise APIException(code=ErrorCode.WAREHOUSE_NOT_FOUND, message='Склад не найден')
 
     return None

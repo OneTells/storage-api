@@ -17,8 +17,8 @@ router.include_router(supplier_router)
     dependencies=[Depends(require_permissions('suppliers.read'))],
     summary="Получить список поставщиков",
     responses={
-        200: {"description": "Список поставщиков успешно получен"},
-    },
+        200: {"description": "Список поставщиков успешно получен"}
+    }
 )
 async def get_suppliers(
     connection: Annotated[Connection, Depends(get_connection)],

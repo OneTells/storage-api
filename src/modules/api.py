@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 
 from core.methods import get_current_user
-from core.schemes import FORBIDDEN_RESPONSE, UNAUTHORIZED_RESPONSE, UNPROCESSABLE_ENTITY_RESPONSE
+from core.schemes import FORBIDDEN_RESPONSE, UNAUTHORIZED_RESPONSE
 from modules.auth.api import router as auth_module_router
 from modules.customers.api import router as customers_router
 from modules.object_units.api import router as object_units_router
@@ -18,7 +18,6 @@ router_with_auth = APIRouter(
     responses={
         401: UNAUTHORIZED_RESPONSE,
         403: FORBIDDEN_RESPONSE,
-        422: UNPROCESSABLE_ENTITY_RESPONSE,
     }
 )
 router_with_auth.include_router(customers_router)

@@ -4,7 +4,7 @@ from everbase import Connection
 from fastapi import APIRouter, Body, Depends, Path
 
 from core.methods import get_connection, require_permissions
-from core.schemes import ErrorCode, ErrorResponse
+from modules.roles.role.responses import ROLE_NAME_CONFLICT, ROLE_NOT_FOUND, ROLE_PERMISSION_404
 from modules.roles.role.schemes import RoleCreate, RoleCreateResponse, RoleUpdate
 
 router = APIRouter()
@@ -18,20 +18,8 @@ router = APIRouter()
     summary="Создать новую роль",
     responses={
         201: {"description": "Роль успешно создана"},
-        409: {
-            "description": "Роль с таким именем уже существует",
-            "model": ErrorResponse,
-            "content": {
-                "application/json": {
-                    "example": {
-                        "code": ErrorCode.ROLE_ALREADY_EXISTS,
-                        "message": "Роль с таким именем уже существует",
-                        "params": {}
-                    }
-                }
-            }
-        },
-    }
+        409: ROLE_NAME_CONFLICT,
+    },
 )
 async def create_role(
     connection: Annotated[Connection, Depends(get_connection)],
@@ -48,33 +36,9 @@ async def create_role(
     summary="Обновить информацию о роли",
     responses={
         204: {"description": "Роль успешно обновлена"},
-        404: {
-            "description": "Роль не найдена",
-            "model": ErrorResponse,
-            "content": {
-                "application/json": {
-                    "example": {
-                        "code": ErrorCode.ROLE_NOT_FOUND,
-                        "message": "Роль не найдена",
-                        "params": {}
-                    }
-                }
-            }
-        },
-        409: {
-            "description": "Роль с таким именем уже существует",
-            "model": ErrorResponse,
-            "content": {
-                "application/json": {
-                    "example": {
-                        "code": ErrorCode.ROLE_ALREADY_EXISTS,
-                        "message": "Роль с таким именем уже существует",
-                        "params": {}
-                    }
-                }
-            }
-        },
-    }
+        404: ROLE_NOT_FOUND,
+        409: ROLE_NAME_CONFLICT,
+    },
 )
 async def update_role(
     connection: Annotated[Connection, Depends(get_connection)],
@@ -92,20 +56,8 @@ async def update_role(
     summary="Удалить роль",
     responses={
         204: {"description": "Роль успешно удалена"},
-        404: {
-            "description": "Роль не найдена",
-            "model": ErrorResponse,
-            "content": {
-                "application/json": {
-                    "example": {
-                        "code": ErrorCode.ROLE_NOT_FOUND,
-                        "message": "Роль не найдена",
-                        "params": {}
-                    }
-                }
-            }
-        },
-    }
+        404: ROLE_NOT_FOUND,
+    },
 )
 async def delete_role(
     connection: Annotated[Connection, Depends(get_connection)],
@@ -122,32 +74,7 @@ async def delete_role(
     summary="Назначить разрешение роли",
     responses={
         204: {"description": "Разрешение успешно назначено"},
-        404: {
-            "description": "Роль или разрешение не найдены",
-            "model": ErrorResponse,
-            "content": {
-                "application/json": {
-                    "examples": {
-                        "role_not_found": {
-                            "summary": "Роль не найдена",
-                            "value": {
-                                "code": ErrorCode.ROLE_NOT_FOUND,
-                                "message": "Роль не найдена",
-                                "params": {}
-                            }
-                        },
-                        "permission_not_found": {
-                            "summary": "Разрешение не найдено",
-                            "value": {
-                                "code": ErrorCode.PERMISSION_NOT_FOUND,
-                                "message": "Разрешение не найдено",
-                                "params": {}
-                            }
-                        },
-                    }
-                }
-            }
-        },
+        404: ROLE_PERMISSION_404,
     }
 )
 async def assign_permission_to_role(
@@ -166,32 +93,7 @@ async def assign_permission_to_role(
     summary="Удалить разрешение у роли",
     responses={
         204: {"description": "Разрешение успешно удалено"},
-        404: {
-            "description": "Роль или разрешение не найдены",
-            "model": ErrorResponse,
-            "content": {
-                "application/json": {
-                    "examples": {
-                        "role_not_found": {
-                            "summary": "Роль не найдена",
-                            "value": {
-                                "code": ErrorCode.ROLE_NOT_FOUND,
-                                "message": "Роль не найдена",
-                                "params": {}
-                            }
-                        },
-                        "permission_not_found": {
-                            "summary": "Разрешение не найдено",
-                            "value": {
-                                "code": ErrorCode.PERMISSION_NOT_FOUND,
-                                "message": "Разрешение не найдено",
-                                "params": {}
-                            }
-                        },
-                    }
-                }
-            }
-        },
+        404: ROLE_PERMISSION_404,
     }
 )
 async def remove_permission_from_role(

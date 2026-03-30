@@ -4,7 +4,7 @@ from everbase import Connection
 from fastapi import APIRouter, Body, Depends, Path
 
 from core.methods import get_connection, require_permissions
-from core.schemes import ErrorCode, ErrorResponse
+from modules.customers.customer.responses import CUSTOMER_NOT_FOUND
 from modules.customers.customer.schemes import CustomerCreate, CustomerCreateResponse, CustomerUpdate
 from modules.customers.schemes import CustomerRead
 
@@ -19,7 +19,7 @@ router = APIRouter()
     summary="Создать нового клиента",
     responses={
         201: {"description": "Клиент успешно создан"},
-    }
+    },
 )
 async def create_customer(
     connection: Annotated[Connection, Depends(get_connection)],
@@ -35,20 +35,8 @@ async def create_customer(
     summary="Получить информацию о клиенте",
     responses={
         200: {"description": "Информация о клиенте успешно получена"},
-        404: {
-            "description": "Клиент не найден",
-            "model": ErrorResponse,
-            "content": {
-                "application/json": {
-                    "example": {
-                        "code": ErrorCode.CUSTOMER_NOT_FOUND,
-                        "message": "Клиент не найден",
-                        "params": {}
-                    }
-                }
-            }
-        },
-    }
+        404: CUSTOMER_NOT_FOUND,
+    },
 )
 async def get_customer(
     connection: Annotated[Connection, Depends(get_connection)],
@@ -65,20 +53,8 @@ async def get_customer(
     summary="Обновить информацию о клиенте",
     responses={
         204: {"description": "Клиент успешно обновлён"},
-        404: {
-            "description": "Клиент не найден",
-            "model": ErrorResponse,
-            "content": {
-                "application/json": {
-                    "example": {
-                        "code": ErrorCode.CUSTOMER_NOT_FOUND,
-                        "message": "Клиент не найден",
-                        "params": {}
-                    }
-                }
-            }
-        },
-    }
+        404: CUSTOMER_NOT_FOUND,
+    },
 )
 async def update_customer(
     connection: Annotated[Connection, Depends(get_connection)],
