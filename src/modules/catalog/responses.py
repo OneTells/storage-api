@@ -1,4 +1,4 @@
-from core.schemes import ErrorCode, ErrorResponse
+from core.schemes import ErrorResponse
 
 CATEGORY_NOT_FOUND = {
     'description': 'Категория не найдена',
@@ -6,9 +6,7 @@ CATEGORY_NOT_FOUND = {
     'content': {
         'application/json': {
             'example': {
-                'code': ErrorCode.CATEGORY_NOT_FOUND,
-                'message': 'Категория не найдена',
-                'params': {},
+                'detail': 'Категория не найдена'
             },
         },
     },

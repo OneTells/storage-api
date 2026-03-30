@@ -1,4 +1,4 @@
-from core.schemes import ErrorCode, ErrorResponse
+from core.schemes import ErrorResponse
 
 WAREHOUSE_NOT_FOUND = {
     'description': 'Склад не найден',
@@ -6,9 +6,7 @@ WAREHOUSE_NOT_FOUND = {
     'content': {
         'application/json': {
             'example': {
-                'code': ErrorCode.WAREHOUSE_NOT_FOUND,
-                'message': 'Склад не найден',
-                'params': {},
+                'detail': 'Склад не найден'
             },
         },
     },

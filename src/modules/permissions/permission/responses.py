@@ -1,4 +1,4 @@
-from core.schemes import ErrorCode, ErrorResponse
+from core.schemes import ErrorResponse
 
 PERMISSION_409 = {
     'description': 'Разрешение с таким именем или кодовым именем уже существует',
@@ -9,17 +9,13 @@ PERMISSION_409 = {
                 'name_exists': {
                     'summary': 'Разрешение с таким именем уже существует',
                     'value': {
-                        'code': ErrorCode.PERMISSION_NAME_ALREADY_EXISTS,
-                        'message': 'Разрешение с таким именем уже существует',
-                        'params': {},
+                        'detail': 'Разрешение с таким именем уже существует'
                     },
                 },
                 'codename_exists': {
                     'summary': 'Разрешение с таким кодовым именем уже существует',
                     'value': {
-                        'code': ErrorCode.PERMISSION_CODENAME_ALREADY_EXISTS,
-                        'message': 'Разрешение с таким кодовым именем уже существует',
-                        'params': {},
+                        'detail': 'Разрешение с таким кодовым именем уже существует'
                     },
                 },
             },
@@ -33,9 +29,7 @@ PERMISSION_NOT_FOUND = {
     'content': {
         'application/json': {
             'example': {
-                'code': ErrorCode.PERMISSION_NOT_FOUND,
-                'message': 'Разрешение не найдено',
-                'params': {},
+                'detail': 'Разрешение не найдено'
             },
         },
     },

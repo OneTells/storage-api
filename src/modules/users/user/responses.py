@@ -1,4 +1,4 @@
-from core.schemes import ErrorCode, ErrorResponse
+from core.schemes import ErrorResponse
 
 USER_ROLE_404 = {
     'description': 'Пользователь или роль не найдены',
@@ -9,17 +9,13 @@ USER_ROLE_404 = {
                 'user_not_found': {
                     'summary': 'Пользователь не найден',
                     'value': {
-                        'code': ErrorCode.USER_NOT_FOUND,
-                        'message': 'Пользователь не найден',
-                        'params': {},
+                        'detail': 'Пользователь не найден'
                     },
                 },
                 'role_not_found': {
                     'summary': 'Роль не найдена',
                     'value': {
-                        'code': ErrorCode.ROLE_NOT_FOUND,
-                        'message': 'Роль не найдена',
-                        'params': {},
+                        'detail': 'Роль не найдена'
                     },
                 },
             },
@@ -33,9 +29,7 @@ USER_NOT_FOUND = {
     'content': {
         'application/json': {
             'example': {
-                'code': ErrorCode.USER_NOT_FOUND,
-                'message': 'Пользователь не найден',
-                'params': {},
+                'detail': 'Пользователь не найден'
             },
         },
     },
@@ -47,9 +41,7 @@ USER_LOGIN_CONFLICT = {
     'content': {
         'application/json': {
             'example': {
-                'code': ErrorCode.USER_LOGIN_ALREADY_EXISTS,
-                'message': 'Пользователь с таким логином уже существует',
-                'params': {},
+                'detail': 'Пользователь с таким логином уже существует'
             },
         },
     },

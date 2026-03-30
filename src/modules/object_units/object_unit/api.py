@@ -16,9 +16,8 @@ router = APIRouter()
     dependencies=[Depends(require_permissions('operations.read'))],
     summary="Получить операции для единицы объекта",
     responses={
-        200: {"description": "Список операций успешно получен"},
-        404: OBJECT_UNIT_NOT_FOUND,
-    },
+        404: OBJECT_UNIT_NOT_FOUND
+    }
 )
 async def get_operations(
     connection: Annotated[Connection, Depends(get_connection)],

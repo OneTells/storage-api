@@ -76,3 +76,15 @@ INTERNAL_ERROR_RESPONSE = {
         }
     },
 }
+
+UNPROCESSABLE_ENTITY_RESPONSE = {
+    'description': 'Необрабатываемая сущность',
+    'model': ErrorResponse,
+    'content': {
+        'application/json': {
+            'example': {
+                'detail': 'Необрабатываемая сущность'
+            },
+        }
+    },
+}

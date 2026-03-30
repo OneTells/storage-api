@@ -1,4 +1,4 @@
-from core.schemes import ErrorCode, ErrorResponse
+from core.schemes import ErrorResponse
 
 OBJECT_NOT_FOUND = {
     'description': 'Объект не найден',
@@ -6,23 +6,19 @@ OBJECT_NOT_FOUND = {
     'content': {
         'application/json': {
             'example': {
-                'code': ErrorCode.OBJECT_NOT_FOUND,
-                'message': 'Объект не найден',
-                'params': {},
+                'detail': 'Объект не найден'
             },
         },
     },
 }
 
 OBJECT_DELETE_CONFLICT = {
-    'description': 'Объект не может быть удалён, так как есть связанные записи',
+    'description': 'Объект не может быть удалён из-за связанных записей',
     'model': ErrorResponse,
     'content': {
         'application/json': {
             'example': {
-                'code': ErrorCode.OBJECT_HAS_RELATIONS,
-                'message': 'Объект не может быть удален, так как есть связанные записи',
-                'params': {},
+                'detail': 'Объект не может быть удален, так как есть связанные записи'
             },
         },
     },

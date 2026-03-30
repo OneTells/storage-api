@@ -17,10 +17,7 @@ router = APIRouter()
     status_code=201,
     dependencies=[Depends(require_permissions('user.create'))],
     summary="Создать нового пользователя",
-    responses={
-        201: {"description": "Пользователь успешно создан"},
-        409: USER_LOGIN_CONFLICT,
-    },
+    responses={409: USER_LOGIN_CONFLICT},
 )
 async def create_user(
     connection: Annotated[Connection, Depends(get_connection)],
@@ -34,10 +31,7 @@ async def create_user(
     response_model=UserRead,
     dependencies=[Depends(require_permissions('user.read'))],
     summary="Получить информацию о пользователе",
-    responses={
-        200: {"description": "Информация о пользователе успешно получена"},
-        404: USER_NOT_FOUND,
-    },
+    responses={404: USER_NOT_FOUND},
 )
 async def get_user(
     connection: Annotated[Connection, Depends(get_connection)],
@@ -53,7 +47,6 @@ async def get_user(
     dependencies=[Depends(require_permissions('user.update'))],
     summary="Обновить информацию о пользователе",
     responses={
-        204: {"description": "Пользователь успешно обновлён"},
         404: USER_NOT_FOUND,
         409: USER_LOGIN_CONFLICT,
     },
@@ -72,10 +65,7 @@ async def update_user(
     status_code=204,
     dependencies=[Depends(require_permissions('user.delete'))],
     summary="Удалить пользователя",
-    responses={
-        204: {"description": "Пользователь успешно удалён"},
-        404: USER_NOT_FOUND,
-    },
+    responses={404: USER_NOT_FOUND},
 )
 async def delete_user(
     connection: Annotated[Connection, Depends(get_connection)],
@@ -91,8 +81,7 @@ async def delete_user(
     dependencies=[Depends(require_permissions('user.role.assign'))],
     summary="Назначить роль пользователю",
     responses={
-        204: {"description": "Роль успешно назначена"},
-        404: USER_ROLE_404,
+        404: USER_ROLE_404
     }
 )
 async def assign_role_to_user(
@@ -110,8 +99,7 @@ async def assign_role_to_user(
     dependencies=[Depends(require_permissions('user.role.remove'))],
     summary="Удалить роль у пользователя",
     responses={
-        204: {"description": "Роль успешно удалена"},
-        404: USER_ROLE_404,
+        404: USER_ROLE_404
     }
 )
 async def remove_role_from_user(

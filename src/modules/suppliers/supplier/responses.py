@@ -1,4 +1,4 @@
-from core.schemes import ErrorCode, ErrorResponse
+from core.schemes import ErrorResponse
 
 SUPPLIER_NOT_FOUND = {
     'description': 'Поставщик не найден',
@@ -6,9 +6,7 @@ SUPPLIER_NOT_FOUND = {
     'content': {
         'application/json': {
             'example': {
-                'code': ErrorCode.SUPPLIER_NOT_FOUND,
-                'message': 'Поставщик не найден',
-                'params': {},
+                'detail': 'Поставщик не найден'
             },
         },
     },

@@ -1,4 +1,4 @@
-from core.schemes import ErrorCode, ErrorResponse
+from core.schemes import ErrorResponse
 
 OBJECT_UNIT_NOT_FOUND = {
     'description': 'Единица объекта не найдена',
@@ -6,9 +6,7 @@ OBJECT_UNIT_NOT_FOUND = {
     'content': {
         'application/json': {
             'example': {
-                'code': ErrorCode.OBJECT_UNIT_NOT_FOUND,
-                'message': 'Единица объекта не найдена',
-                'params': {},
+                'detail': 'Единица объекта не найдена'
             },
         },
     },

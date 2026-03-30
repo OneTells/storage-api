@@ -17,9 +17,6 @@ router = APIRouter()
     status_code=201,
     dependencies=[Depends(require_permissions('object.create'))],
     summary="Создать новый объект",
-    responses={
-        201: {"description": "Объект успешно создан"},
-    },
 )
 async def create_object(
     connection: Annotated[Connection, Depends(get_connection)],
@@ -34,8 +31,7 @@ async def create_object(
     dependencies=[Depends(require_permissions('object.read'))],
     summary="Получить информацию об объекте",
     responses={
-        200: {"description": "Информация об объекте успешно получена"},
-        404: OBJECT_NOT_FOUND,
+        404: OBJECT_NOT_FOUND
     }
 )
 async def get_object(
@@ -52,8 +48,7 @@ async def get_object(
     dependencies=[Depends(require_permissions('object.update'))],
     summary="Обновить информацию об объекте",
     responses={
-        204: {"description": "Объект успешно обновлён"},
-        404: OBJECT_NOT_FOUND,
+        404: OBJECT_NOT_FOUND
     }
 )
 async def update_object(
@@ -71,7 +66,6 @@ async def update_object(
     dependencies=[Depends(require_permissions('object.delete'))],
     summary="Удалить объект",
     responses={
-        204: {"description": "Объект успешно удалён"},
         404: OBJECT_NOT_FOUND,
         409: OBJECT_DELETE_CONFLICT,
     }

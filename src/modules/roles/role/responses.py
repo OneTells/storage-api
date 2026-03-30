@@ -1,4 +1,4 @@
-from core.schemes import ErrorCode, ErrorResponse
+from core.schemes import ErrorResponse
 
 ROLE_PERMISSION_404 = {
     'description': 'Роль или разрешение не найдены',
@@ -9,17 +9,13 @@ ROLE_PERMISSION_404 = {
                 'role_not_found': {
                     'summary': 'Роль не найдена',
                     'value': {
-                        'code': ErrorCode.ROLE_NOT_FOUND,
-                        'message': 'Роль не найдена',
-                        'params': {},
+                        'detail': 'Роль не найдена'
                     },
                 },
                 'permission_not_found': {
                     'summary': 'Разрешение не найдено',
                     'value': {
-                        'code': ErrorCode.PERMISSION_NOT_FOUND,
-                        'message': 'Разрешение не найдено',
-                        'params': {},
+                        'detail': 'Разрешение не найдено'
                     },
                 },
             },
@@ -33,9 +29,7 @@ ROLE_NOT_FOUND = {
     'content': {
         'application/json': {
             'example': {
-                'code': ErrorCode.ROLE_NOT_FOUND,
-                'message': 'Роль не найдена',
-                'params': {},
+                'detail': 'Роль не найдена'
             },
         },
     },
@@ -47,9 +41,7 @@ ROLE_NAME_CONFLICT = {
     'content': {
         'application/json': {
             'example': {
-                'code': ErrorCode.ROLE_ALREADY_EXISTS,
-                'message': 'Роль с таким именем уже существует',
-                'params': {},
+                'detail': 'Роль с таким именем уже существует'
             },
         },
     },

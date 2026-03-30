@@ -17,9 +17,8 @@ router = APIRouter()
     dependencies=[Depends(require_permissions('role.create'))],
     summary="Создать новую роль",
     responses={
-        201: {"description": "Роль успешно создана"},
-        409: ROLE_NAME_CONFLICT,
-    },
+        409: ROLE_NAME_CONFLICT
+    }
 )
 async def create_role(
     connection: Annotated[Connection, Depends(get_connection)],
@@ -35,7 +34,6 @@ async def create_role(
     dependencies=[Depends(require_permissions('role.update'))],
     summary="Обновить информацию о роли",
     responses={
-        204: {"description": "Роль успешно обновлена"},
         404: ROLE_NOT_FOUND,
         409: ROLE_NAME_CONFLICT,
     },
@@ -55,9 +53,8 @@ async def update_role(
     dependencies=[Depends(require_permissions('role.delete'))],
     summary="Удалить роль",
     responses={
-        204: {"description": "Роль успешно удалена"},
-        404: ROLE_NOT_FOUND,
-    },
+        404: ROLE_NOT_FOUND
+    }
 )
 async def delete_role(
     connection: Annotated[Connection, Depends(get_connection)],
@@ -73,8 +70,7 @@ async def delete_role(
     dependencies=[Depends(require_permissions('role.permission.assign'))],
     summary="Назначить разрешение роли",
     responses={
-        204: {"description": "Разрешение успешно назначено"},
-        404: ROLE_PERMISSION_404,
+        404: ROLE_PERMISSION_404
     }
 )
 async def assign_permission_to_role(
@@ -92,8 +88,7 @@ async def assign_permission_to_role(
     dependencies=[Depends(require_permissions('role.permission.remove'))],
     summary="Удалить разрешение у роли",
     responses={
-        204: {"description": "Разрешение успешно удалено"},
-        404: ROLE_PERMISSION_404,
+        404: ROLE_PERMISSION_404
     }
 )
 async def remove_permission_from_role(

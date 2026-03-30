@@ -1,4 +1,4 @@
-from core.schemes import ErrorCode, ErrorResponse
+from core.schemes import ErrorResponse
 
 PASSWORD_LOGIN_INVALID_CREDENTIALS = {
     'description': 'Неверные учётные данные',
@@ -6,9 +6,7 @@ PASSWORD_LOGIN_INVALID_CREDENTIALS = {
     'content': {
         'application/json': {
             'example': {
-                'code': ErrorCode.INVALID_CREDENTIALS,
-                'message': 'Неверные учётные данные',
-                'params': {},
+                'detail': 'Неверные учётные данные'
             },
         },
     },

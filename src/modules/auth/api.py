@@ -17,11 +17,9 @@ router.include_router(password_router)
     status_code=204,
     summary="Завершить сессию (логаут)",
     responses={
-        204: {"description": "Сессия успешно завершена"},
         401: UNAUTHORIZED_RESPONSE,
-        403: FORBIDDEN_RESPONSE
+        403: FORBIDDEN_RESPONSE,
     }
-
 )
 async def logout(
     connection: Annotated[Connection, Depends(get_connection)],

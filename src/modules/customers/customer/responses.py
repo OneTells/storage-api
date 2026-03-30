@@ -1,4 +1,4 @@
-from core.schemes import ErrorCode, ErrorResponse
+from core.schemes import ErrorResponse
 
 CUSTOMER_NOT_FOUND = {
     'description': 'Клиент не найден',
@@ -6,9 +6,7 @@ CUSTOMER_NOT_FOUND = {
     'content': {
         'application/json': {
             'example': {
-                'code': ErrorCode.CUSTOMER_NOT_FOUND,
-                'message': 'Клиент не найден',
-                'params': {},
+                'detail': 'Клиент не найден'
             },
         },
     },

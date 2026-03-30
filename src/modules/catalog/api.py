@@ -16,9 +16,8 @@ router = APIRouter(prefix="/catalog", tags=["Каталог объектов п�
     dependencies=[Depends(require_permissions('catalog.read'))],
     summary="Получить объекты, категории и их связи",
     responses={
-        200: {"description": "Объекты, категории и их связи успешно получены"},
-        404: CATEGORY_NOT_FOUND,
-    },
+        404: CATEGORY_NOT_FOUND
+    }
 )
 async def get_catalog(
     connection: Annotated[Connection, Depends(get_connection)],

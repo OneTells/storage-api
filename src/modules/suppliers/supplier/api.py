@@ -17,9 +17,6 @@ router = APIRouter()
     status_code=201,
     dependencies=[Depends(require_permissions('supplier.create'))],
     summary="Создать нового поставщика",
-    responses={
-        201: {"description": "Поставщик успешно создан"},
-    }
 )
 async def create_supplier(
     connection: Annotated[Connection, Depends(get_connection)],
@@ -34,8 +31,7 @@ async def create_supplier(
     dependencies=[Depends(require_permissions('supplier.read'))],
     summary="Получить информацию о поставщике",
     responses={
-        200: {"description": "Информация о поставщике успешно получена"},
-        404: SUPPLIER_NOT_FOUND,
+        404: SUPPLIER_NOT_FOUND
     }
 )
 async def get_supplier(
@@ -52,8 +48,7 @@ async def get_supplier(
     dependencies=[Depends(require_permissions('supplier.update'))],
     summary="Обновить информацию о поставщике",
     responses={
-        204: {"description": "Поставщик успешно обновлён"},
-        404: SUPPLIER_NOT_FOUND,
+        404: SUPPLIER_NOT_FOUND
     }
 )
 async def update_supplier(

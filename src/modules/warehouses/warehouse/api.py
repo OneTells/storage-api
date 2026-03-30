@@ -1,11 +1,9 @@
 from typing import Annotated
 
 from everbase import Connection
-from fastapi import APIRouter, Body, Depends, Path
+from fastapi import APIRouter, Body, Depends, HTTPException, Path
 
-from core.exceptions import APIException
 from core.methods import get_connection, require_permissions
-from core.schemes import ErrorCode
 from modules.warehouses.schemes import WarehouseRead
 from modules.warehouses.warehouse import repositories
 from modules.warehouses.warehouse.responses import WAREHOUSE_NOT_FOUND
@@ -19,10 +17,7 @@ router = APIRouter()
     response_model=WarehouseCreateResponse,
     status_code=201,
     dependencies=[Depends(require_permissions('warehouse.create'))],
-    summary="Создать новый склад",
-    responses={
-        201: {"description": "Склад успешно создан"},
-    }
+    summary="Создать новый склад"
 )
 async def create_warehouse(
     connection: Annotated[Connection, Depends(get_connection)],
@@ -38,7 +33,6 @@ async def create_warehouse(
     dependencies=[Depends(require_permissions('warehouse.read'))],
     summary="Получить информацию о складе",
     responses={
-        200: {"description": "Информация о складе успешно получена"},
         404: WAREHOUSE_NOT_FOUND,
     }
 )
@@ -49,7 +43,7 @@ async def get_warehouse(
     warehouse = await repositories.get_warehouse_by_id(connection, warehouse_id)
 
     if warehouse is None:
-        raise APIException(code=ErrorCode.WAREHOUSE_NOT_FOUND, message='Склад не найден')
+        raise HTTPException(status_code=404, detail='Склад не найден')
 
     return warehouse
 
@@ -61,7 +55,6 @@ async def get_warehouse(
     dependencies=[Depends(require_permissions('warehouse.update'))],
     summary="Обновить информацию о складе",
     responses={
-        204: {"description": "Склад успешно обновлён"},
         404: WAREHOUSE_NOT_FOUND,
     }
 )
@@ -73,6 +66,6 @@ async def update_warehouse(
     data = await repositories.update_warehouse(connection, warehouse_id, payload)
 
     if data is None:
-        raise APIException(code=ErrorCode.WAREHOUSE_NOT_FOUND, message='Склад не найден')
+        raise HTTPException(status_code=404, detail='Склад не найден')
 
     return None

@@ -1,4 +1,4 @@
-from core.schemes import ErrorCode, ErrorResponse
+from core.schemes import ErrorResponse
 
 RECEIPT_404 = {
     'description': 'Сущность не найдена',
@@ -8,27 +8,15 @@ RECEIPT_404 = {
             'examples': {
                 'supplier_not_found': {
                     'summary': 'Поставщик не найден',
-                    'value': {
-                        'code': ErrorCode.SUPPLIER_NOT_FOUND,
-                        'message': 'Поставщик не найден',
-                        'params': {},
-                    },
+                    'value': {'detail': 'Поставщик не найден'},
                 },
                 'object_not_found': {
                     'summary': 'Объект не найден',
-                    'value': {
-                        'code': ErrorCode.OBJECT_NOT_FOUND,
-                        'message': 'Объект не найден',
-                        'params': {},
-                    },
+                    'value': {'detail': 'Объект не найден'},
                 },
                 'warehouse_not_found': {
                     'summary': 'Склад не найден',
-                    'value': {
-                        'code': ErrorCode.WAREHOUSE_NOT_FOUND,
-                        'message': 'Склад не найден',
-                        'params': {},
-                    },
+                    'value': {'detail': 'Склад не найден'},
                 },
             },
         },

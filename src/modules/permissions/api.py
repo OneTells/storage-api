@@ -16,9 +16,6 @@ router.include_router(permission_router)
     response_model=PermissionsReadResponse,
     dependencies=[Depends(require_permissions('permissions.read'))],
     summary="Получить список разрешений",
-    responses={
-        200: {"description": "Список разрешений успешно получен"}
-    }
 )
 async def get_permissions(
     connection: Annotated[Connection, Depends(get_connection)],

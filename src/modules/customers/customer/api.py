@@ -17,9 +17,6 @@ router = APIRouter()
     status_code=201,
     dependencies=[Depends(require_permissions('customer.create'))],
     summary="Создать нового клиента",
-    responses={
-        201: {"description": "Клиент успешно создан"},
-    },
 )
 async def create_customer(
     connection: Annotated[Connection, Depends(get_connection)],
@@ -34,9 +31,8 @@ async def create_customer(
     dependencies=[Depends(require_permissions('customer.read'))],
     summary="Получить информацию о клиенте",
     responses={
-        200: {"description": "Информация о клиенте успешно получена"},
-        404: CUSTOMER_NOT_FOUND,
-    },
+        404: CUSTOMER_NOT_FOUND
+    }
 )
 async def get_customer(
     connection: Annotated[Connection, Depends(get_connection)],
@@ -52,9 +48,8 @@ async def get_customer(
     dependencies=[Depends(require_permissions('customer.update'))],
     summary="Обновить информацию о клиенте",
     responses={
-        204: {"description": "Клиент успешно обновлён"},
-        404: CUSTOMER_NOT_FOUND,
-    },
+        404: CUSTOMER_NOT_FOUND
+    }
 )
 async def update_customer(
     connection: Annotated[Connection, Depends(get_connection)],

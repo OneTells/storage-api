@@ -17,9 +17,8 @@ router = APIRouter()
     status_code=201,
     summary="Авторизация по логину и паролю",
     responses={
-        201: {"description": "Авторизация успешна"},
-        401: PASSWORD_LOGIN_INVALID_CREDENTIALS,
-    },
+        401: PASSWORD_LOGIN_INVALID_CREDENTIALS
+    }
 )
 async def password_login(
     connection: Annotated[Connection, Depends(get_connection)],
