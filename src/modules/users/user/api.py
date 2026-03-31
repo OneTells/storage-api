@@ -17,7 +17,9 @@ router = APIRouter()
     status_code=201,
     dependencies=[Depends(require_permissions('user.create'))],
     summary="Создать нового пользователя",
-    responses={409: USER_LOGIN_CONFLICT},
+    responses={
+        409: USER_LOGIN_CONFLICT
+    }
 )
 async def create_user(
     connection: Annotated[Connection, Depends(get_connection)],
@@ -31,7 +33,9 @@ async def create_user(
     response_model=UserRead,
     dependencies=[Depends(require_permissions('user.read'))],
     summary="Получить информацию о пользователе",
-    responses={404: USER_NOT_FOUND},
+    responses={
+        404: USER_NOT_FOUND
+    }
 )
 async def get_user(
     connection: Annotated[Connection, Depends(get_connection)],
@@ -49,7 +53,7 @@ async def get_user(
     responses={
         404: USER_NOT_FOUND,
         409: USER_LOGIN_CONFLICT,
-    },
+    }
 )
 async def update_user(
     connection: Annotated[Connection, Depends(get_connection)],
@@ -87,7 +91,7 @@ async def delete_user(
 async def assign_role_to_user(
     connection: Annotated[Connection, Depends(get_connection)],
     user_id: Annotated[int, Path(ge=1, description="Идентификатор пользователя")],
-    role_id: Annotated[int, Body(ge=1, description="Идентификатор роли")]
+    role_id: Annotated[int, Body(ge=1, description="Идентификатор роли", embed=True)]
 ):
     raise NotImplementedError
 

@@ -4,11 +4,13 @@ from everbase import Connection
 from fastapi import APIRouter, Depends, Query
 
 from core.methods import get_connection, require_permissions
-from modules.users.user.api import router as user_router
+from modules.users.profile.api import router as profile_router
 from modules.users.schemes import UsersReadResponse
+from modules.users.user.api import router as user_router
 
 router = APIRouter(prefix="/users", tags=["Управление пользователями"])
 router.include_router(user_router)
+router.include_router(profile_router)
 
 
 @router.get(

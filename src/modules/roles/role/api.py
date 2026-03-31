@@ -76,7 +76,7 @@ async def delete_role(
 async def assign_permission_to_role(
     connection: Annotated[Connection, Depends(get_connection)],
     role_id: Annotated[int, Path(ge=1, description="Идентификатор роли")],
-    permission_id: Annotated[int, Body(ge=1, description="Идентификатор разрешения")]
+    permission_id: Annotated[int, Body(ge=1, description="Идентификатор разрешения", embed=True)]
 ):
     raise NotImplementedError
 

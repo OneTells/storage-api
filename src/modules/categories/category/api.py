@@ -138,7 +138,7 @@ async def get_category_objects(
 async def bind_object_to_category(
     connection: Annotated[Connection, Depends(get_connection)],
     category_id: Annotated[int, Path(ge=1, description="Идентификатор категории")],
-    object_id: Annotated[int, Body(ge=1, description="Идентификатор объекта")],
+    object_id: Annotated[int, Body(ge=1, description="Идентификатор объекта", embed=True)],
 ):
     raise NotImplementedError
 
@@ -174,7 +174,7 @@ async def unbind_object_from_category(
 async def add_subcategory_to_category(
     connection: Annotated[Connection, Depends(get_connection)],
     category_id: Annotated[int, Path(ge=1, description="Идентификатор категории")],
-    subcategory_id: Annotated[int, Body(ge=1, description="Идентификатор подкатегории")],
+    subcategory_id: Annotated[int, Body(ge=1, description="Идентификатор подкатегории", embed=True)],
 ):
     raise NotImplementedError
 
