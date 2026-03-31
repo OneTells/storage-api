@@ -24,7 +24,7 @@ class ObjectUnit(Base):
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, server_default=func.uuidv7())
 
     object_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(Object.id))
-    warehouse_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(Warehouse.id))
+    warehouse_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey(Warehouse.id))
 
     status: Mapped[ObjectUnitStatus] = mapped_column(Enum(ObjectUnitStatus))
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())

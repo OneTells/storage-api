@@ -69,7 +69,7 @@ class WriteOffToProductionDetail(Base):
     __tablename__ = "write_off_to_production_details"
 
     operation_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(StockOperation.id, ondelete="CASCADE"), primary_key=True)
-    production_order_id: Mapped[int] = mapped_column(BigInteger)
+    order_id: Mapped[int] = mapped_column(BigInteger)
 
 
 class WriteOffToProductionUnitDetail(Base):
@@ -82,7 +82,7 @@ class ProductionOutputDetail(Base):
     __tablename__ = "production_output_details"
 
     operation_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(StockOperation.id, ondelete="CASCADE"), primary_key=True)
-    production_order_id: Mapped[int] = mapped_column(BigInteger)
+    order_id: Mapped[int] = mapped_column(BigInteger)
 
 
 class ProductionOutputUnitDetail(Base):
@@ -110,7 +110,7 @@ class ReturnFromProductionDetail(Base):
     __tablename__ = "return_from_production_details"
 
     operation_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(StockOperation.id, ondelete="CASCADE"), primary_key=True)
-    production_order_id: Mapped[int] = mapped_column(BigInteger)
+    order_id: Mapped[int] = mapped_column(BigInteger)
     reason: Mapped[str | None] = mapped_column(Text)
 
 

@@ -45,7 +45,7 @@ class ReceiptOperationModel:
 class WriteOffToProductionOperationModel:
 
     class Detail(BaseModel):
-        production_order_id: Annotated[int, Field(ge=1, description="Идентификатор производственного заказа")]
+        order_id: Annotated[int, Field(ge=1, description="Идентификатор производственного заказа")]
 
     class UnitDetail(BaseModel):
         pass
@@ -54,7 +54,7 @@ class WriteOffToProductionOperationModel:
 class ProductionOutputOperationModel:
 
     class Detail(BaseModel):
-        production_order_id: Annotated[int, Field(ge=1, description="Идентификатор производственного заказа")]
+        order_id: Annotated[int, Field(ge=1, description="Идентификатор производственного заказа")]
 
     class UnitDetail(BaseModel):
         cost_price: Annotated[float | None, Field(ge=0, description="Себестоимость")] = None
@@ -72,7 +72,7 @@ class ShipmentOperationModel:
 class ReturnFromProductionOperationModel:
 
     class Detail(BaseModel):
-        production_order_id: Annotated[int, Field(ge=1, description="Идентификатор производственного заказа")]
+        order_id: Annotated[int, Field(ge=1, description="Идентификатор производственного заказа")]
         reason: Annotated[str | None, Field(description="Причина возврата")] = None
 
     class UnitDetail(BaseModel):
