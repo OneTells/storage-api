@@ -8,9 +8,9 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import ARRAY, func, Select, Text
 
 from core.config import settings
-from core.methods import get_connection
 from core.models import Permission, Role, RolePermission, User, UserRole, UserSession
 from core.schemes import UserModel
+from .connection import get_connection
 
 
 class Token:

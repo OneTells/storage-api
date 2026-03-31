@@ -12,7 +12,7 @@ router = APIRouter()
 
 
 @router.post(
-    "/password/login",
+    "/password",
     response_model=TokenResponse,
     status_code=201,
     summary="Авторизация по логину и паролю",
