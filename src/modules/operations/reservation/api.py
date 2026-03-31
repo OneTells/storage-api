@@ -29,3 +29,20 @@ async def create_reservation(
 ):
     raise NotImplementedError
 
+
+@router.delete(
+    "/reservation",
+    response_model=None,
+    status_code=204,
+    dependencies=[Depends(require_permissions("operations.reservation.cancel"))],
+    summary="Отмена бронирования",
+    responses={
+        404: RESERVATION_404
+    }
+)
+async def cancel_reservation(
+    connection: Annotated[Connection, Depends(get_connection)],
+    user: Annotated[UserModel, Depends(get_current_user)],
+    operation_id: Annotated[int, Body(ge=1, description="Идентификатор операции бронирования")],
+):
+    raise NotImplementedError

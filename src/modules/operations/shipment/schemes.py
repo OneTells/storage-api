@@ -13,4 +13,3 @@ class ShipmentCreate(BaseModel):
     name: Annotated[str, Field(min_length=1, max_length=255, description="Название операции отгрузки")]
     customer_id: Annotated[int, Field(ge=1, description="Идентификатор клиента")]
     units: list[ShipmentUnitCreate]
-
