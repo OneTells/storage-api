@@ -4,15 +4,15 @@ from everbase import Connection
 from fastapi import APIRouter, Depends, Path
 
 from core.methods import get_connection, require_permissions
+from modules.object_units.object_unit.schemes import OperationType
 from modules.operations.operation.responses import OPERATION_NOT_FOUND
-from modules.operations.operation.schemes import OperationReadResponse
 
 router = APIRouter()
 
 
 @router.get(
     "/{operation_id}",
-    response_model=OperationReadResponse,
+    response_model=OperationType,
     dependencies=[Depends(require_permissions("operations.read"))],
     summary="Получить операцию",
     responses={
