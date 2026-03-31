@@ -185,3 +185,11 @@ OperationType = (
 class OperationsReadResponse(BaseModel):
     operations: Annotated[list[OperationType], Field(description="Список операций")]
     pagination: Annotated[Pagination, Field(description="Информация о пагинации")]
+
+
+class ObjectUnitRead(BaseModel):
+    id: Annotated[int, Field(ge=1, description="Идентификатор единицы объекта")]
+    object_id: Annotated[int, Field(ge=1, description="Идентификатор объекта")]
+    warehouse_id: Annotated[int | None, Field(ge=1, description="Идентификатор склада")] = None
+    status: Annotated[ObjectUnitStatus, Field(description="Статус единицы объекта")]
+    created_at: Annotated[AwareDatetime, Field(description="Время создания единицы объекта")]
