@@ -10,6 +10,7 @@ from modules.objects.api import router as objects_router
 from modules.operations.api import router as operations_router
 from modules.permissions.api import router as permissions_router
 from modules.roles.api import router as roles_router
+from modules.stock.api import router as stock_router
 from modules.suppliers.api import router as suppliers_router
 from modules.users.api import router as users_router
 from modules.warehouses.api import router as warehouses_router
@@ -28,6 +29,7 @@ router_with_auth.include_router(objects_router)
 router_with_auth.include_router(operations_router)
 router_with_auth.include_router(permissions_router)
 router_with_auth.include_router(roles_router)
+router_with_auth.include_router(stock_router)
 router_with_auth.include_router(suppliers_router)
 router_with_auth.include_router(users_router)
 router_with_auth.include_router(warehouses_router)
