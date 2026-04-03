@@ -30,8 +30,8 @@ async def create_reservation(
     raise NotImplementedError
 
 
-@router.delete(
-    "/reservation",
+@router.post(
+    "/reservation/cancel",
     response_model=None,
     status_code=204,
     dependencies=[Depends(require_permissions("operations.reservation.cancel"))],
