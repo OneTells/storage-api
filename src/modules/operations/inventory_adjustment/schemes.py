@@ -1,4 +1,5 @@
 from typing import Annotated
+from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, Field
 
@@ -6,7 +7,7 @@ from core.models import ObjectUnitStatus
 
 
 class InventoryAdjustmentUnitCreate(BaseModel):
-    object_unit_id: Annotated[int, Field(ge=1, description="Идентификатор единицы объекта")]
+    object_unit_id: Annotated[UUID, Field(ge=1, description="Идентификатор единицы объекта")]
     warehouse_id: Annotated[int | None, Field(ge=1, description="Идентификатор склада")]
     status: Annotated[ObjectUnitStatus, Field(description="Статус единицы объекта")]
     reason: Annotated[str | None, Field(max_length=500, description="Причина корректировки")] = None

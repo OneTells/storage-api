@@ -1,4 +1,5 @@
 from typing import Annotated, Literal
+from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, Field
 
@@ -23,7 +24,7 @@ class BaseOperationUnit[T: BaseModel](BaseModel):
     id: Annotated[int, Field(ge=1, description="Идентификатор единицы операции")]
 
     operation_id: Annotated[int, Field(ge=1, description="Идентификатор операции")]
-    object_unit_id: Annotated[int, Field(ge=1, description="Идентификатор единицы объекта")]
+    object_unit_id: Annotated[UUID, Field(ge=1, description="Идентификатор единицы объекта")]
 
     old_warehouse_id: Annotated[int | None, Field(ge=1, description="Идентификатор старого склада")] = None
     new_warehouse_id: Annotated[int | None, Field(ge=1, description="Идентификатор нового склада")] = None

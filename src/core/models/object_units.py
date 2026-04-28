@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from enum import auto, StrEnum
 
-from sqlalchemy import BigInteger, Enum, ForeignKey, Index, TIMESTAMP, Uuid
+from sqlalchemy import BigInteger, Enum, ForeignKey, Index, Text, TIMESTAMP, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -25,6 +25,8 @@ class ObjectUnit(Base):
 
     object_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(Object.id))
     warehouse_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey(Warehouse.id))
+
+    comment: Mapped[str | None] = mapped_column(Text)
 
     status: Mapped[ObjectUnitStatus] = mapped_column(Enum(ObjectUnitStatus))
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())

@@ -1,11 +1,12 @@
 from decimal import Decimal
 from typing import Annotated
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
 
 class ShipmentUnitCreate(BaseModel):
-    object_unit_id: Annotated[int, Field(ge=1, description="Идентификатор единицы объекта")]
+    object_unit_id: Annotated[UUID, Field(ge=1, description="Идентификатор единицы объекта")]
     sale_price: Annotated[Decimal, Field(ge=0, decimal_places=2, description="Цена продажи")]
 
 

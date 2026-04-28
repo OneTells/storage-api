@@ -1,6 +1,7 @@
 import hashlib
 import hmac
 from typing import Annotated, Awaitable, Callable
+from uuid import UUID
 
 from everbase import Connection
 from fastapi import Depends, HTTPException
@@ -17,19 +18,19 @@ class Token:
     SEPARATOR = "."
 
     @staticmethod
-    def _create_token_signature(session_id: int, secret: str) -> str:
+    def _create_token_signature(session_id: UUID, secret: str) -> str:
         return hmac.new(secret.encode(), str(session_id).encode(), hashlib.sha256).hexdigest()
 
     @classmethod
-    def generate(cls, session_id: int, secret: str) -> str:
+    def generate(cls, session_id: UUID, secret: str) -> str:
         signature = cls._create_token_signature(session_id, secret)
         return f"{session_id}{cls.SEPARATOR}{signature}"
 
     @classmethod
-    def parse(cls, token: str, secret: str) -> int:
+    def parse(cls, token: str, secret: str) -> UUID:
         try:
             session_id_str, signature = token.split(cls.SEPARATOR, maxsplit=1)
-            session_id = int(session_id_str)
+            session_id = UUID(session_id_str)
         except (ValueError, IndexError):
             raise ValueError
 
@@ -41,7 +42,7 @@ class Token:
         return session_id
 
 
-async def _validate_session(connection: Connection, session_id: int) -> UserModel:
+async def _validate_session(connection: Connection, session_id: UUID) -> UserModel:
     user_info = await connection.fetch_row(
         Select(
             User.id,
@@ -72,9 +73,9 @@ async def _validate_session(connection: Connection, session_id: int) -> UserMode
 
 async def get_current_user(
     connection: Annotated[Connection, Depends(get_connection)],
-    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(HTTPBearer(auto_error=False))]
+    auth_credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(HTTPBearer(auto_error=False))]
 ) -> UserModel:
-    if credentials is None:
+    if auth_credentials is None:
         raise HTTPException(
             status_code=401,
             detail='Требуется аутентификация',
@@ -82,7 +83,7 @@ async def get_current_user(
         )
 
     try:
-        session_id = Token.parse(credentials.credentials, settings.secret_token)
+        session_id = Token.parse(auth_credentials.credentials, settings.secret_token)
     except ValueError:
         raise HTTPException(status_code=401, detail='Невалидный токен')
 

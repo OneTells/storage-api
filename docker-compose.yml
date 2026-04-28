@@ -23,43 +23,43 @@ services:
     restart: unless-stopped
     stop_grace_period: 10s
 
-  traefik:
-    image: traefik:3.6
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
-    volumes:
-      - ./config/traefik-static.yaml:/etc/traefik/traefik.yaml:ro
-      - ./config/traefik-dynamic.yaml:/etc/traefik/dynamic.yaml:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - traefik-public-certificates:/certificates
-    networks:
-      default:
-        ipv4_address: 172.19.0.3
-    restart: unless-stopped
+#  traefik:
+#    image: traefik:3.6
+#    ports:
+#      - "80:80"
+#      - "443:443"
+#      - "443:443/udp"
+#    volumes:
+#      - ./config/traefik-static.yaml:/etc/traefik/traefik.yaml:ro
+#      - ./config/traefik-dynamic.yaml:/etc/traefik/dynamic.yaml:ro
+#      - /var/run/docker.sock:/var/run/docker.sock:ro
+#      - traefik-public-certificates:/certificates
+#    networks:
+#      default:
+#        ipv4_address: 172.19.0.3
+#    restart: unless-stopped
 
-  storage-api:
-    build: .
-    entrypoint: >
-      gunicorn main:app 
-      --workers 2 
-      --bind 0.0.0.0:8000 
-      --timeout 600 
-      --worker-class uvicorn.workers.UvicornWorker 
-      --keep-alive 600
-      --forwarded-allow-ips="172.19.0.3"
-    ports:
-      - "8000:8000"
-#    expose:
-#      - 8000
-    volumes:
-      - storage-api-memory:/app/memory
-    depends_on:
-      postgres:
-        condition: service_healthy
-    stop_grace_period: 1m30s
-    restart: unless-stopped
+#  storage-api:
+#    build: .
+#    entrypoint: >
+#      gunicorn main:app
+#      --workers 2
+#      --bind 0.0.0.0:8000
+#      --timeout 600
+#      --worker-class uvicorn.workers.UvicornWorker
+#      --keep-alive 600
+#      --forwarded-allow-ips="172.19.0.3"
+#    ports:
+#      - "8000:8000"
+##    expose:
+##      - 8000
+#    volumes:
+#      - storage-api-memory:/app/memory
+#    depends_on:
+#      postgres:
+#        condition: service_healthy
+#    stop_grace_period: 1m30s
+#    restart: unless-stopped
 
 networks:
   default:

@@ -1,10 +1,11 @@
 from typing import Annotated
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
 
 class ReturnToSupplierUnitCreate(BaseModel):
-    object_unit_id: Annotated[int, Field(ge=1, description="Идентификатор единицы объекта")]
+    object_unit_id: Annotated[UUID, Field(ge=1, description="Идентификатор единицы объекта")]
     reason: Annotated[str | None, Field(max_length=500, description="Причина возврата")] = None
 
 

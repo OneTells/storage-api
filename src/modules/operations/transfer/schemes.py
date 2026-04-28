@@ -1,10 +1,11 @@
 from typing import Annotated
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
 
 class TransferUnitCreate(BaseModel):
-    object_unit_id: Annotated[int, Field(ge=1, description="Идентификатор единицы объекта")]
+    object_unit_id: Annotated[UUID, Field(ge=1, description="Идентификатор единицы объекта")]
     warehouse_id: Annotated[int, Field(ge=1, description="Идентификатор целевого склада")]
 
 

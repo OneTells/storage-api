@@ -18,13 +18,18 @@ class _LazyTransaction:
         self._transaction: Transaction | None = None
 
     async def __aenter__(self) -> None:
+        if self._transaction is not None:
+            return
+
         real_conn = await self._lazy_conn.acquire()
         self._transaction = real_conn.transaction(**self._kwargs)
-        await self._transaction.__aenter__()
+        await self._transaction.__aenter__()  # type: ignore
 
     async def __aexit__(self, *args, **kwargs) -> None:
-        if self._transaction:
-            await self._transaction.__aexit__(*args, **kwargs)
+        if self._transaction is None:
+            return
+
+        await self._transaction.__aexit__(*args, **kwargs)
 
 
 class _LazyConnection:
@@ -38,16 +43,18 @@ class _LazyConnection:
     async def acquire(self) -> Connection:
         if self._connection is None:
             self._pool_connection_wrapper = self._acquire_func()
-            self._connection = await self._pool_connection_wrapper.__aenter__()
+            self._connection = await self._pool_connection_wrapper.__aenter__()  # type: ignore
 
-        return self._connection
+        return self._connection  # type: ignore
 
     async def release(self) -> None:
-        if self._connection is not None:
-            await self._pool_connection_wrapper.__aexit__(None, None, None)
+        if self._connection is None or self._pool_connection_wrapper is None:
+            return
 
-            self._pool_connection_wrapper = None
-            self._connection = None
+        await self._pool_connection_wrapper.__aexit__(None, None, None)
+
+        self._pool_connection_wrapper = None
+        self._connection = None
 
     # --- Свойства и методы, соответствующие интерфейсу ConnectionWrapper ---
 
@@ -65,7 +72,7 @@ class _LazyConnection:
         return _LazyTransaction(self, **kwargs)
 
     def __getattr__(self, name: str) -> Any:
-        original_method = getattr(Connection, name, None)
+        original_method: Callable[..., Any] | None = getattr(Connection, name, None)
 
         if original_method is None:
             raise AttributeError(f"'{Connection.__name__}' has no attribute '{name}'")

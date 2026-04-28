@@ -7,15 +7,15 @@ from fastapi.responses import RedirectResponse, Response
 from starlette.status import HTTP_422_UNPROCESSABLE_CONTENT, HTTP_500_INTERNAL_SERVER_ERROR
 
 from core.config import settings
-from core.methods import Lifespan
-from core.middleware import LoggerMiddleware
+# from core.methods import Lifespan
+from core.middlewares import LoggerMiddleware
 from core.schemes import INTERNAL_ERROR_RESPONSE, UNPROCESSABLE_ENTITY_RESPONSE
 from modules.api import main_router
 
 app = FastAPI(
     title="Storage API",
     version="1.0.0",
-    lifespan=Lifespan.run,
+    # lifespan=Lifespan.run,
     responses={
         422: UNPROCESSABLE_ENTITY_RESPONSE,
         500: INTERNAL_ERROR_RESPONSE,

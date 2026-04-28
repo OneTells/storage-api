@@ -1,4 +1,5 @@
 from typing import Annotated
+from uuid import UUID
 
 from everbase import Connection
 from fastapi import APIRouter, Depends, Path, Query
@@ -21,7 +22,7 @@ router = APIRouter()
 )
 async def get_object_unit(
     connection: Annotated[Connection, Depends(get_connection)],
-    object_unit_id: Annotated[int, Path(ge=1, description="Идентификатор единицы объекта")],
+    object_unit_id: Annotated[UUID, Path(ge=1, description="Идентификатор единицы объекта")],
 ):
     raise NotImplementedError
 
@@ -37,7 +38,7 @@ async def get_object_unit(
 )
 async def get_operations(
     connection: Annotated[Connection, Depends(get_connection)],
-    object_unit_id: Annotated[int, Path(ge=1, description="Идентификатор единицы объекта")],
+    object_unit_id: Annotated[UUID, Path(ge=1, description="Идентификатор единицы объекта")],
     page: Annotated[int, Query(ge=1, description="Номер страницы")] = 1,
     limit: Annotated[int, Query(ge=1, le=1000, description="Количество элементов на странице")] = 100,
 ):

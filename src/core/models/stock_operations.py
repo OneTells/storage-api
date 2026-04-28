@@ -1,7 +1,8 @@
+import uuid
 from datetime import datetime
 from enum import auto, StrEnum
 
-from sqlalchemy import BigInteger, Enum, ForeignKey, func, Identity, Numeric, Text, TIMESTAMP
+from sqlalchemy import BigInteger, Enum, ForeignKey, func, Identity, Numeric, Text, TIMESTAMP, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base
@@ -42,7 +43,7 @@ class StockOperationUnit(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
     operation_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(StockOperation.id, ondelete="CASCADE"), index=True)
-    object_unit_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(ObjectUnit.id), index=True)
+    object_unit_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey(ObjectUnit.id), index=True)
 
     old_warehouse_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey(Warehouse.id))
     new_warehouse_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey(Warehouse.id))
