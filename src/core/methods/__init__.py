@@ -1,9 +1,9 @@
 from .authentication import get_current_user, require_permissions, Token
 from .connection import get_connection
-from .lifespan import Lifespan
+from .lifespan import lifespan
 
 __all__ = (
-    "Lifespan",
+    "lifespan",
 
     "get_connection",
 

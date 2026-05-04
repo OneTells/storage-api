@@ -19,6 +19,7 @@ class Config(BaseSettings):
 
     telegram_token: str
     telegram_log_chat_id: str
+    telegram_bot_proxy: str
 
     database_dsn: PostgresDsn
     database_pool_size: int = 5

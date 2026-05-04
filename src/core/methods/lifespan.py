@@ -1,32 +1,21 @@
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator
+from typing import AsyncIterator
 
 from fastapi import FastAPI
 from loguru import logger
 
 from core.config import complete_logging, configure_logging
-from core.objects import database
+from core.objects.database import database
 
 
-class Lifespan:
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    configure_logging()
+    await database.connect()
 
-    @staticmethod
-    async def _startup() -> None:
-        configure_logging()
+    logger.info("API запушен")
+    yield
+    logger.info("API остановлен")
 
-        await database.connect()
-        logger.info("API запушен")
-
-    @staticmethod
-    async def _shutdown() -> None:
-        await database.close()
-        logger.info("API остановлен")
-
-        await complete_logging()
-
-    @classmethod
-    @asynccontextmanager
-    async def run(cls, _: FastAPI) -> AsyncIterator[Any]:
-        await cls._startup()
-        yield
-        await cls._shutdown()
+    await database.close()
+    await complete_logging()

@@ -68,6 +68,6 @@ def configure_logging() -> None:
     )
 
 
-async def complete_logging():
+async def complete_logging() -> None:
     await logger.complete()
     logger.remove()

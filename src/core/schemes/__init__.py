@@ -6,14 +6,13 @@ from .responses import (
 )
 
 __all__ = (
+    'UserModel',
+
     'Pagination',
 
     'ErrorResponse',
-
-    'UNAUTHORIZED_RESPONSE',
-    'FORBIDDEN_RESPONSE',
     'UNPROCESSABLE_ENTITY_RESPONSE',
     'INTERNAL_ERROR_RESPONSE',
-
-    'UserModel',
+    'FORBIDDEN_RESPONSE',
+    'UNAUTHORIZED_RESPONSE',
 )

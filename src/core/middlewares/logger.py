@@ -7,7 +7,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.types import Scope
 
 
-def get_real_ip(scope: Scope) -> str:
+def _get_real_ip(scope: Scope) -> str:
     for key, value in scope["headers"]:
         if key == b"x-real-ip":
             return value.decode("latin-1")
@@ -24,7 +24,7 @@ class LoggerMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
         except Exception as error:
             logger.exception(
-                f"Ошибка в api: {error}. IP={get_real_ip(request.scope)}. "
+                f"Ошибка в api: {error}. IP={_get_real_ip(request.scope)}. "
                 f"Request({request.method}; {request.url}; headers={request.headers}). "
                 f"Время исполнения: {int((time.perf_counter_ns() - start_time) / 1_000_000)} мс"
             )
@@ -32,7 +32,7 @@ class LoggerMiddleware(BaseHTTPMiddleware):
             raise error
 
         logger.debug(
-            f"Запрос к api. IP={get_real_ip(request.scope)}. "
+            f"Запрос к api. IP={_get_real_ip(request.scope)}. "
             f"Request({request.method}; {request.url}; headers={request.headers}). "
             f"Response({response.status_code}). "
             f"Время исполнения: {int((time.perf_counter_ns() - start_time) / 1_000_000)} мс"
