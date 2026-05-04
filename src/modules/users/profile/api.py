@@ -59,11 +59,7 @@ async def update_profile(
         )
 
     if current_username != payload.username:
-        existing_by_username = await repositories.exist_user_by_username(
-            connection,
-            payload.username,
-            exclude_user_id=user.id
-        )
+        existing_by_username = await repositories.exist_user_by_username(connection, payload.username)
 
         if existing_by_username:
             raise APIException(
