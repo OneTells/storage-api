@@ -27,4 +27,3 @@ async def logout(
     user: Annotated[UserModel, Depends(get_current_user)]
 ):
     await deactivate_session(connection, user.session_id)
-    return None

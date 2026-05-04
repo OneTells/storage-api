@@ -3,7 +3,9 @@ from typing import Annotated
 from everbase import Connection
 from fastapi import APIRouter, Body, Depends, Path
 
+from core.exceptions import APIException
 from core.methods import get_connection, require_permissions
+from modules.permissions.permission import repositories
 from modules.permissions.permission.responses import PERMISSION_409, PERMISSION_NOT_FOUND
 from modules.permissions.permission.schemes import PermissionCreate, PermissionCreateResponse, PermissionUpdate
 from modules.permissions.schemes import PermissionRead
@@ -25,7 +27,26 @@ async def create_permission(
     connection: Annotated[Connection, Depends(get_connection)],
     payload: Annotated[PermissionCreate, Body()]
 ):
-    raise NotImplementedError
+    existing_by_name = await repositories.exist_permission_by_name(connection, payload.name)
+
+    if existing_by_name:
+        raise APIException(
+            status_code=409,
+            code="PERMISSION_NAME_EXISTS",
+            message="Разрешение с таким именем уже существует"
+        )
+
+    existing_by_codename = await repositories.exist_permission_by_codename(connection, payload.codename)
+
+    if existing_by_codename:
+        raise APIException(
+            status_code=409,
+            code="PERMISSION_CODENAME_EXISTS",
+            message="Разрешение с таким кодовым именем уже существует"
+        )
+
+    permission_id = await repositories.create_permission(connection, payload.name, payload.codename)
+    return PermissionCreateResponse(id=permission_id)
 
 
 @router.get(
@@ -41,7 +62,16 @@ async def get_permission(
     connection: Annotated[Connection, Depends(get_connection)],
     permission_id: Annotated[int, Path(ge=1, description="Идентификатор разрешения")]
 ):
-    raise NotImplementedError
+    permission = await repositories.get_permission_by_id(connection, permission_id)
+
+    if permission is None:
+        raise APIException(
+            status_code=404,
+            code="PERMISSION_NOT_FOUND",
+            message="Разрешение не найдено"
+        )
+
+    return PermissionRead(**permission)
 
 
 @router.put(
@@ -60,7 +90,36 @@ async def update_permission(
     permission_id: Annotated[int, Path(ge=1, description="Идентификатор разрешения")],
     payload: Annotated[PermissionUpdate, Body()]
 ):
-    raise NotImplementedError
+    permission = await repositories.get_permission_by_id(connection, permission_id)
+
+    if permission is None:
+        raise APIException(
+            status_code=404,
+            code="PERMISSION_NOT_FOUND",
+            message="Разрешение не найдено"
+        )
+
+    if permission['name'] != payload.name:
+        existing_by_name = await repositories.exist_permission_by_name(connection, payload.name)
+
+        if existing_by_name:
+            raise APIException(
+                status_code=409,
+                code="PERMISSION_NAME_EXISTS",
+                message="Разрешение с таким именем уже существует"
+            )
+
+    if permission['codename'] != payload.codename:
+        existing_by_codename = await repositories.exist_permission_by_codename(connection, payload.codename)
+
+        if existing_by_codename:
+            raise APIException(
+                status_code=409,
+                code="PERMISSION_CODENAME_EXISTS",
+                message="Разрешение с таким кодовым именем уже существует"
+            )
+
+    await repositories.update_permission(connection, permission_id, payload.name, payload.codename)
 
 
 @router.delete(
@@ -77,4 +136,13 @@ async def delete_permission(
     connection: Annotated[Connection, Depends(get_connection)],
     permission_id: Annotated[int, Path(ge=1, description="Идентификатор разрешения")]
 ):
-    raise NotImplementedError
+    permission = await repositories.get_permission_by_id(connection, permission_id)
+
+    if not permission:
+        raise APIException(
+            status_code=404,
+            code="PERMISSION_NOT_FOUND",
+            message="Разрешение не найдено"
+        )
+
+    await repositories.delete_permission(connection, permission_id)
