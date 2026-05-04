@@ -1,12 +1,16 @@
 FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim AS builder
 
-ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy
 
 WORKDIR /app
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends git \
-    && rm -rf /var/lib/apt/lists/*
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && \
+    apt-get install -y --no-install-recommends git && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
@@ -20,14 +24,11 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 FROM python:3.14-slim-bookworm AS production
 
-ENV PYTHONUNBUFFERED=1 PYTHONOPTIMIZE=2
-ENV TZ=Europe/Moscow
+ENV PYTHONUNBUFFERED=1 \
+    TZ=Europe/Moscow
 
-RUN groupadd --system --gid 999 nonroot \
-    && useradd --system --gid 999 --uid 999 --create-home nonroot \
-    && mkdir -p /app/memory \
-    && chown -R nonroot:nonroot /app/memory \
-    && chmod 777 /app/memory
+RUN groupadd --system --gid 999 nonroot && \
+    useradd --system --gid 999 --uid 999 --create-home nonroot
 
 COPY --from=builder --chown=nonroot:nonroot /app/.venv /app/.venv
 COPY --from=builder --chown=nonroot:nonroot /app/src /app/src
