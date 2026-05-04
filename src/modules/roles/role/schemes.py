@@ -1,10 +1,11 @@
 from pydantic import BaseModel
 
-from modules.roles.schemes import NameField
+from modules.roles.schemes import DescriptionField, NameField
 
 
 class RoleCreate(BaseModel):
     name: NameField
+    description: DescriptionField
 
 
 class RoleCreateResponse(BaseModel):
@@ -13,3 +14,4 @@ class RoleCreateResponse(BaseModel):
 
 class RoleUpdate(BaseModel):
     name: NameField
+    description: DescriptionField

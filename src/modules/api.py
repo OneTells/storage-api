@@ -23,8 +23,8 @@ router_with_auth = APIRouter(
     }
 )
 router_with_auth.include_router(permissions_router)
-# router_with_auth.include_router(roles_router)
-# router_with_auth.include_router(users_router)
+router_with_auth.include_router(roles_router)
+router_with_auth.include_router(users_router)
 
 main_router = APIRouter(prefix="/api/v1")
 main_router.include_router(auth_module_router)

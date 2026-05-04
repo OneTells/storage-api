@@ -4,8 +4,10 @@ from everbase import Connection
 from fastapi import APIRouter, Depends, Query
 
 from core.methods import get_connection, require_permissions
+from core.schemes import Pagination
+from modules.users import repositories
 from modules.users.profile.api import router as profile_router
-from modules.users.schemes import UsersReadResponse
+from modules.users.schemes import UserRead, UsersReadResponse
 from modules.users.user.api import router as user_router
 
 router = APIRouter(prefix="/users", tags=["Управление пользователями"])
@@ -25,4 +27,17 @@ async def get_users(
     limit: Annotated[int, Query(ge=1, le=1000, description="Количество элементов на странице")] = 100,
     is_active: Annotated[bool | None, Query(description="Фильтр по активности пользователя")] = None
 ):
-    raise NotImplementedError
+    users = await repositories.fetch_users(connection, page, limit, is_active)
+    total = await repositories.count_users(connection, is_active)
+
+    return UsersReadResponse(
+        users=[UserRead(**user) for user in users],
+        pagination=Pagination(
+            page=page,
+            limit=limit,
+            total=total,
+            pages=(total + limit - 1) // limit,
+            has_next=page * limit < total,
+            has_prev=page > 1
+        )
+    )

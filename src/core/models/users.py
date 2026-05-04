@@ -45,6 +45,7 @@ class Role(Base):
     id: Mapped[int] = mapped_column(SmallInteger, Identity(always=True), primary_key=True)
 
     name: Mapped[str] = mapped_column(Text, unique=True)
+    description: Mapped[str] = mapped_column(Text)
 
 
 class Permission(Base):

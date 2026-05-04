@@ -36,7 +36,7 @@ async def create_role(
             message="Роль с таким именем уже существует"
         )
 
-    role_id = await repositories.create_role(connection, payload.name)
+    role_id = await repositories.create_role(connection, payload.name, payload.description)
     return RoleCreateResponse(id=role_id)
 
 
@@ -100,7 +100,7 @@ async def update_role(
                 message="Роль с таким именем уже существует"
             )
 
-    await repositories.update_role(connection, role_id, payload.name)
+    await repositories.update_role(connection, role_id, payload.name, payload.description)
 
 
 @router.delete(
@@ -117,9 +117,9 @@ async def delete_role(
     connection: Annotated[Connection, Depends(get_connection)],
     role_id: Annotated[int, Path(ge=1, description="Идентификатор роли")]
 ):
-    role = await repositories.get_role_by_id(connection, role_id)
+    role_exists = await repositories.exist_role_by_id(connection, role_id)
 
-    if not role:
+    if not role_exists:
         raise APIException(
             status_code=404,
             code="ROLE_NOT_FOUND",
@@ -144,9 +144,9 @@ async def assign_permission_to_role(
     role_id: Annotated[int, Path(ge=1, description="Идентификатор роли")],
     permission_id: Annotated[int, Body(ge=1, description="Идентификатор разрешения", embed=True)]
 ):
-    role = await repositories.get_role_by_id(connection, role_id)
+    role_exists = await repositories.exist_role_by_id(connection, role_id)
 
-    if role is None:
+    if not role_exists:
         raise APIException(
             status_code=404,
             code="ROLE_NOT_FOUND",
@@ -180,9 +180,9 @@ async def remove_permission_from_role(
     role_id: Annotated[int, Path(ge=1, description="Идентификатор роли")],
     permission_id: Annotated[int, Path(ge=1, description="Идентификатор разрешения")]
 ):
-    role = await repositories.get_role_by_id(connection, role_id)
+    role_exists = await repositories.exist_role_by_id(connection, role_id)
 
-    if role is None:
+    if not role_exists:
         raise APIException(
             status_code=404,
             code="ROLE_NOT_FOUND",

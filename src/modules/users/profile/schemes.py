@@ -1,22 +1,19 @@
 from typing import Annotated
+from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, Field
 
-from core.schemes import Pagination
+from modules.users.schemes import CreatedAtField, IdField, IsActiveField, NameField, UsernameField
 
-IdField = Annotated[int, Field(ge=1, description="Идентификатор пользователя")]
-NameField = Annotated[str, Field(min_length=1, max_length=255, description="Имя пользователя")]
-UsernameField = Annotated[str, Field(min_length=3, max_length=50, description="Имя пользователя (логин)")]
-PasswordField = Annotated[str, Field(min_length=8, max_length=128, description="Пароль пользователя")]
-IsActiveField = Annotated[bool, Field(description="Флаг активности пользователя")]
-CreatedAtField = Annotated[AwareDatetime, Field(description="Время создания пользователя")]
+SessionIdField = Annotated[UUID, Field(description="Идентификатор сессии")]
 RoleIdField = Annotated[int, Field(ge=1, description="Идентификатор роли")]
 RoleNameField = Annotated[str, Field(min_length=1, max_length=255, description="Название роли")]
 RoleDescriptionField = Annotated[str, Field(min_length=1, max_length=500, description="Описание роли")]
 PermissionIdField = Annotated[int, Field(ge=1, description="Идентификатор разрешения")]
 PermissionNameField = Annotated[str, Field(min_length=1, max_length=255, description="Название разрешения")]
 PermissionCodenameField = Annotated[str, Field(min_length=1, max_length=255, description="Кодовое имя разрешения")]
-ActiveSessionsField = Annotated[int, Field(ge=0, description="Количество активных сессий")]
+SessionCreatedAtField = Annotated[AwareDatetime, Field(description="Время создания сессии")]
+SessionDeactivatedAtField = Annotated[AwareDatetime | None, Field(description="Время деактивации сессии")]
 
 
 class UserRole(BaseModel):
@@ -31,17 +28,14 @@ class UserPermission(BaseModel):
     codename: PermissionCodenameField
 
 
-class UserRead(BaseModel):
-    id: IdField
-    name: NameField
-    username: UsernameField
+class UserSession(BaseModel):
+    id: SessionIdField
     is_active: IsActiveField
-    created_at: CreatedAtField
-    roles: list[UserRole]
-    active_sessions: ActiveSessionsField
+    created_at: SessionCreatedAtField
+    deactivated_at: SessionDeactivatedAtField
 
 
-class UserReadWithPermissions(BaseModel):
+class ProfileRead(BaseModel):
     id: IdField
     name: NameField
     username: UsernameField
@@ -49,8 +43,4 @@ class UserReadWithPermissions(BaseModel):
     created_at: CreatedAtField
     roles: list[UserRole]
     permissions: list[UserPermission]
-
-
-class UsersReadResponse(BaseModel):
-    users: list[UserRead]
-    pagination: Pagination
+    sessions: list[UserSession]
