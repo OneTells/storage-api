@@ -7,6 +7,7 @@ from orjson import dumps
 from starlette.status import HTTP_422_UNPROCESSABLE_CONTENT, HTTP_500_INTERNAL_SERVER_ERROR
 
 from core.config import settings
+from core.exceptions import APIException
 from core.methods import lifespan
 from core.middlewares import LoggerMiddleware
 from core.schemes import INTERNAL_ERROR_RESPONSE, UNPROCESSABLE_ENTITY_RESPONSE
@@ -34,6 +35,22 @@ app.include_router(main_router)
 @app.get("/", include_in_schema=False)
 def redirect_to_base_url() -> RedirectResponse:
     return RedirectResponse(settings.base_url)
+
+
+@app.exception_handler(APIException)
+async def api_exception_handler(_: Request, exc: APIException) -> Response:
+    return Response(
+        status_code=exc.status_code,
+        content=dumps(
+            {
+                "code": exc.code,
+                "message": exc.message,
+                "details": exc.details
+            }
+        ),
+        headers=exc.headers,
+        media_type="application/json"
+    )
 
 
 @app.exception_handler(RequestValidationError)

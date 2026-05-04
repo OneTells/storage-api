@@ -6,8 +6,10 @@ PASSWORD_LOGIN_INVALID_CREDENTIALS = {
     'content': {
         'application/json': {
             'example': {
-                'detail': 'Неверные учётные данные'
-            },
-        },
-    },
+                'code': 'INVALID_DATA',
+                'message': 'Неверные учётные данные',
+                'details': {}
+            }
+        }
+    }
 }

@@ -22,17 +22,9 @@ router_with_auth = APIRouter(
         403: FORBIDDEN_RESPONSE,
     }
 )
-router_with_auth.include_router(categories_router)
-router_with_auth.include_router(customers_router)
-router_with_auth.include_router(object_units_router)
-router_with_auth.include_router(objects_router)
-router_with_auth.include_router(operations_router)
 router_with_auth.include_router(permissions_router)
-router_with_auth.include_router(roles_router)
-router_with_auth.include_router(stock_router)
-router_with_auth.include_router(suppliers_router)
-router_with_auth.include_router(users_router)
-router_with_auth.include_router(warehouses_router)
+# router_with_auth.include_router(roles_router)
+# router_with_auth.include_router(users_router)
 
 main_router = APIRouter(prefix="/api/v1")
 main_router.include_router(auth_module_router)

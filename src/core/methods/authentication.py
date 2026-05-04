@@ -103,7 +103,11 @@ async def get_current_user_optional(
             message="Сессия не активна"
         )
 
-    return UserModel(id=user_info['id'], permissions=user_info['permissions'])
+    return UserModel(
+        id=user_info['id'],
+        session_id=session_id,
+        permissions=user_info['permissions']
+    )
 
 
 async def get_current_user(user: Annotated[UserModel | None, Depends(get_current_user_optional)]) -> UserModel:
