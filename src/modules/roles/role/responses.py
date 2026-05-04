@@ -1,48 +1,56 @@
 from core.schemes import ErrorResponse
 
 ROLE_PERMISSION_404 = {
-    'description': 'Роль или разрешение не найдены',
-    'model': ErrorResponse,
-    'content': {
-        'application/json': {
-            'examples': {
-                'role_not_found': {
-                    'summary': 'Роль не найдена',
-                    'value': {
-                        'detail': 'Роль не найдена'
-                    },
+    "description": "Роль или разрешение не найдены",
+    "model": ErrorResponse,
+    "content": {
+        "application/json": {
+            "examples": {
+                "role_not_found": {
+                    "summary": "Роль не найдена",
+                    "value": {
+                        "code": "ROLE_NOT_FOUND",
+                        "message": "Роль не найдена",
+                        "details": {}
+                    }
                 },
-                'permission_not_found': {
-                    'summary': 'Разрешение не найдено',
-                    'value': {
-                        'detail': 'Разрешение не найдено'
-                    },
-                },
-            },
-        },
-    },
+                "permission_not_found": {
+                    "summary": "Разрешение не найдено",
+                    "value": {
+                        "code": "PERMISSION_NOT_FOUND",
+                        "message": "Разрешение не найдено",
+                        "details": {}
+                    }
+                }
+            }
+        }
+    }
 }
 
 ROLE_NOT_FOUND = {
-    'description': 'Роль не найдена',
-    'model': ErrorResponse,
-    'content': {
-        'application/json': {
-            'example': {
-                'detail': 'Роль не найдена'
-            },
-        },
-    },
+    "description": "Роль не найдена",
+    "model": ErrorResponse,
+    "content": {
+        "application/json": {
+            "example": {
+                "code": "ROLE_NOT_FOUND",
+                "message": "Роль не найдена",
+                "details": {}
+            }
+        }
+    }
 }
 
 ROLE_NAME_CONFLICT = {
-    'description': 'Роль с таким именем уже существует',
-    'model': ErrorResponse,
-    'content': {
-        'application/json': {
-            'example': {
-                'detail': 'Роль с таким именем уже существует'
-            },
-        },
-    },
+    "description": "Роль с таким именем уже существует",
+    "model": ErrorResponse,
+    "content": {
+        "application/json": {
+            "example": {
+                "code": "ROLE_NAME_EXISTS",
+                "message": "Роль с таким именем уже существует",
+                "details": {}
+            }
+        }
+    }
 }

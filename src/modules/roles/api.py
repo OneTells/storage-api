@@ -4,8 +4,10 @@ from everbase import Connection
 from fastapi import APIRouter, Depends, Query
 
 from core.methods import get_connection, require_permissions
+from core.schemes import Pagination
+from modules.roles import repositories
 from modules.roles.role.api import router as role_router
-from modules.roles.schemes import RolesReadResponse
+from modules.roles.schemes import RoleRead, RolesReadResponse
 
 router = APIRouter(prefix="/roles", tags=["Управление ролями"])
 router.include_router(role_router)
@@ -20,7 +22,19 @@ router.include_router(role_router)
 async def get_roles(
     connection: Annotated[Connection, Depends(get_connection)],
     page: Annotated[int, Query(ge=1, description="Номер страницы")],
-    limit: Annotated[int, Query(ge=1, le=1000, description="Количество элементов на странице")] = 100,
-    is_active: Annotated[bool | None, Query(description="Фильтр по активности роли")] = None
+    limit: Annotated[int, Query(ge=1, le=1000, description="Количество элементов на странице")] = 100
 ):
-    raise NotImplementedError
+    roles = await repositories.fetch_roles(connection, page, limit)
+    total = await repositories.count_roles(connection)
+
+    return RolesReadResponse(
+        roles=[RoleRead(**x) for x in roles],
+        pagination=Pagination(
+            page=page,
+            limit=limit,
+            total=total,
+            pages=(total + limit - 1) // limit,
+            has_next=page * limit < total,
+            has_prev=page > 1
+        )
+    )
