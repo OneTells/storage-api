@@ -9,7 +9,7 @@ http:
       middlewares:
         - compress-middleware
         - retry-middleware
-      service: backend
+      service: everium-api
 
     www-redirect:
       rule: "Host(`www.api.ya.ru`)"
@@ -19,12 +19,11 @@ http:
         certResolver: letsencrypt
       middlewares:
         - redirect-to-non-www
-      service: backend
+      service: everium-api
 
   middlewares:
     compress-middleware:
-      compress:
-        includedContentTypes: "text/css,application/javascript,application/json,text/html"
+      compress: { }
 
     retry-middleware:
       retry:
@@ -38,7 +37,7 @@ http:
         permanent: true
 
   services:
-    backend:
+    everium-api:
       loadBalancer:
         servers:
-          - url: "http://backend:8000"
+          - url: "http://everium-api:8000"

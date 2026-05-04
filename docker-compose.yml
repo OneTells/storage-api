@@ -21,21 +21,21 @@ services:
     restart: unless-stopped
     stop_grace_period: 10s
 
-  traefik:
-    image: traefik:3.6
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
-    volumes:
-      - ./config/traefik-static.yaml:/etc/traefik/traefik.yaml:ro
-      - ./config/traefik-dynamic.yaml:/etc/traefik/dynamic.yaml:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - traefik-public-certificates:/certificates
-    networks:
-      default:
-        ipv4_address: 172.19.0.3
-    restart: unless-stopped
+#  traefik:
+#    image: traefik:3.6
+#    ports:
+#      - "80:80"
+#      - "443:443"
+#      - "443:443/udp"
+#    volumes:
+#      - ./config/traefik-static.yaml:/etc/traefik/traefik.yaml:ro
+#      - ./config/traefik-dynamic.yaml:/etc/traefik/dynamic.yaml:ro
+#      - /var/run/docker.sock:/var/run/docker.sock:ro
+#      - traefik-public-certificates:/certificates
+#    networks:
+#      default:
+#        ipv4_address: 172.19.0.3
+#    restart: unless-stopped
 
   everium-api:
     build: .
@@ -46,9 +46,11 @@ services:
       --timeout 600
       --worker-class uvicorn.workers.UvicornWorker
       --keep-alive 600
-      --forwarded-allow-ips="172.19.0.3"
-    expose:
-      - 8000
+      --forwarded-allow-ips="172.21.0.3"
+#    expose:
+#      - 8000
+    ports:
+      - "8000:8000"
     env_file:
       - .env
     volumes:
@@ -64,8 +66,8 @@ networks:
     driver: bridge
     ipam:
       config:
-        - subnet: 172.19.0.0/16
-          gateway: 172.19.0.1
+        - subnet: 172.21.0.0/16
+          gateway: 172.21.0.1
 
 volumes:
   postgres-data:
