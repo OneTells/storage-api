@@ -89,16 +89,16 @@ async def update_user(
     user_id: Annotated[int, Path(ge=1, description="Идентификатор пользователя")],
     payload: Annotated[UserUpdate, Body()]
 ):
-    user = await repositories.get_user_by_id(connection, user_id)
+    current_username = await repositories.get_user_username(connection, user_id)
 
-    if user is None:
+    if current_username is None:
         raise APIException(
             status_code=404,
             code="USER_NOT_FOUND",
             message="Пользователь не найден"
         )
 
-    if user['username'] != payload.username:
+    if current_username != payload.username:
         existing_by_username = await repositories.exist_user_by_username(connection, payload.username)
 
         if existing_by_username:
@@ -133,9 +133,9 @@ async def delete_user(
     connection: Annotated[Connection, Depends(get_connection)],
     user_id: Annotated[int, Path(ge=1, description="Идентификатор пользователя")]
 ):
-    user = await repositories.get_user_by_id(connection, user_id)
+    exist_user = await repositories.exist_user_by_id(connection, user_id)
 
-    if not user:
+    if not exist_user:
         raise APIException(
             status_code=404,
             code="USER_NOT_FOUND",
@@ -160,9 +160,9 @@ async def assign_role_to_user(
     user_id: Annotated[int, Path(ge=1, description="Идентификатор пользователя")],
     role_id: Annotated[int, Body(ge=1, description="Идентификатор роли", embed=True)]
 ):
-    user = await repositories.get_user_by_id(connection, user_id)
+    exist_user = await repositories.exist_user_by_id(connection, user_id)
 
-    if user is None:
+    if exist_user is None:
         raise APIException(
             status_code=404,
             code="USER_NOT_FOUND",
@@ -196,9 +196,9 @@ async def remove_role_from_user(
     user_id: Annotated[int, Path(ge=1, description="Идентификатор пользователя")],
     role_id: Annotated[int, Path(ge=1, description="Идентификатор роли")]
 ):
-    user = await repositories.get_user_by_id(connection, user_id)
+    exist_user = await repositories.exist_user_by_id(connection, user_id)
 
-    if user is None:
+    if exist_user is None:
         raise APIException(
             status_code=404,
             code="USER_NOT_FOUND",
@@ -232,9 +232,9 @@ async def change_user_password(
     user_id: Annotated[int, Path(ge=1, description="Идентификатор пользователя")],
     payload: Annotated[UserChangePassword, Body()]
 ):
-    user = await repositories.get_user_by_id(connection, user_id)
+    user_exists = await repositories.exist_user_by_id(connection, user_id)
 
-    if user is None:
+    if not user_exists:
         raise APIException(
             status_code=404,
             code="USER_NOT_FOUND",
@@ -259,9 +259,9 @@ async def get_user_sessions(
     user_id: Annotated[int, Path(ge=1, description="Идентификатор пользователя")],
     sessions_limit: Annotated[int, Query(ge=1, le=100, description="Количество сессий для отображения")] = 10,
 ):
-    user = await repositories.get_user_by_id(connection, user_id)
+    user_exists = await repositories.exist_user_by_id(connection, user_id)
 
-    if user is None:
+    if not user_exists:
         raise APIException(
             status_code=404,
             code="USER_NOT_FOUND",
@@ -287,9 +287,9 @@ async def terminate_user_session(
     user_id: Annotated[int, Path(ge=1, description="Идентификатор пользователя")],
     session_id: Annotated[str, Path(description="Идентификатор сессии")]
 ):
-    user = await repositories.get_user_by_id(connection, user_id)
+    user_exists = await repositories.exist_user_by_id(connection, user_id)
 
-    if user is None:
+    if not user_exists:
         raise APIException(
             status_code=404,
             code="USER_NOT_FOUND",

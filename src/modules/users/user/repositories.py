@@ -59,6 +59,28 @@ async def exist_user_by_username(connection: Connection, username: str) -> bool:
     return await connection.fetch_val(query)
 
 
+async def exist_user_by_id(connection: Connection, user_id: int) -> bool:
+    query = (
+        Select(
+            Select(1)
+            .select_from(User)
+            .where(User.id == user_id)
+            .exists()
+        )
+    )
+
+    return await connection.fetch_val(query)
+
+
+async def get_user_username(connection: Connection, user_id: int) -> str | None:
+    query = (
+        Select(User.username)
+        .where(User.id == user_id)
+    )
+
+    return await connection.fetch_val(query)
+
+
 async def exist_role_by_id(connection: Connection, role_id: int) -> bool:
     query = (
         Select(

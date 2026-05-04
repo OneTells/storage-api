@@ -62,7 +62,7 @@ async def get_role(
             message="Роль не найдена"
         )
 
-    return RoleRead(**role)
+    return RoleRead.model_validate(role)
 
 
 @router.put(
