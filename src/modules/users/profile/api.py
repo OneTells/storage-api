@@ -2,13 +2,13 @@ from typing import Annotated
 
 from everbase import Connection
 from fastapi import APIRouter, Body, Depends, Query
+from orjson import loads
 
 from core.exceptions import APIException
 from core.methods import get_connection, get_current_user, require_permissions
 from core.schemes import UserModel
 from modules.users.profile import repositories
-from modules.users.profile.schemes import ProfileRead
-from modules.users.user.schemes import UserUpdate
+from modules.users.profile.schemes import ProfileRead, ProfileUpdate
 from modules.users.utils import hash_password
 
 router = APIRouter()
@@ -34,7 +34,12 @@ async def get_profile(
             message="Пользователь не найден"
         )
 
-    return ProfileRead.model_validate(profile_data)
+    data = dict(profile_data)
+    data['sessions'] = [loads(x) for x in data['sessions']]
+    data['roles'] = [loads(x) for x in data['roles']]
+    data['permissions'] = [loads(x) for x in data['permissions']]
+
+    return ProfileRead.model_validate(data)
 
 
 @router.put(
@@ -47,7 +52,7 @@ async def get_profile(
 async def update_profile(
     connection: Annotated[Connection, Depends(get_connection)],
     user: Annotated[UserModel, Depends(get_current_user)],
-    payload: Annotated[UserUpdate, Body()],
+    payload: Annotated[ProfileUpdate, Body()],
 ):
     current_username = await repositories.get_user_username(connection, user.id)
 
@@ -74,6 +79,5 @@ async def update_profile(
         user.id,
         payload.name,
         payload.username,
-        password_hash,
-        payload.is_active
+        password_hash
     )

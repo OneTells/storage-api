@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, Field
 
-from modules.users.schemes import CreatedAtField, IdField, IsActiveField, NameField, UsernameField
+from modules.users.schemes import CreatedAtField, IdField, IsActiveField, NameField, PasswordField, UsernameField
 
 SessionIdField = Annotated[UUID, Field(description="Идентификатор сессии")]
 RoleIdField = Annotated[int, Field(ge=1, description="Идентификатор роли")]
@@ -44,3 +44,9 @@ class ProfileRead(BaseModel):
     roles: list[UserRole]
     permissions: list[UserPermission]
     sessions: list[UserSession]
+
+
+class ProfileUpdate(BaseModel):
+    name: NameField
+    username: UsernameField
+    password: PasswordField

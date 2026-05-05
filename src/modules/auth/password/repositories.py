@@ -16,7 +16,6 @@ async def get_user_id(connection: Connection, username: str, password_hash: str)
             User.password_hash == password_hash,
             User.is_active
         )
-        .exists()
     )
 
     return await connection.fetch_val(query)

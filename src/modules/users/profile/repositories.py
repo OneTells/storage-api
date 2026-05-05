@@ -9,6 +9,7 @@ async def get_user_profile_data(connection: Connection, user_id: int, sessions_l
     sessions_subquery = (
         Select(
             UserSession.id,
+            UserSession.user_id,
             UserSession.is_active,
             UserSession.created_at,
             UserSession.deactivated_at
@@ -28,31 +29,37 @@ async def get_user_profile_data(connection: Connection, user_id: int, sessions_l
             User.created_at,
             func.coalesce(
                 func.array_agg(
-                    func.jsonb_build_object(
-                        'id', Role.id,
-                        'name', Role.name,
-                        'description', Role.description
+                    func.distinct(
+                        func.jsonb_build_object(
+                            'id', Role.id,
+                            'name', Role.name,
+                            'description', Role.description
+                        )
                     )
                 ).filter(Role.id.isnot(None)),
                 []
             ).label('roles'),
             func.coalesce(
                 func.array_agg(
-                    func.jsonb_build_object(
-                        'id', Permission.id,
-                        'name', Permission.name,
-                        'codename', Permission.codename
+                    func.distinct(
+                        func.jsonb_build_object(
+                            'id', Permission.id,
+                            'name', Permission.name,
+                            'codename', Permission.codename
+                        )
                     )
                 ).filter(Permission.id.isnot(None)),
                 []
             ).label('permissions'),
             func.coalesce(
                 func.array_agg(
-                    func.jsonb_build_object(
-                        'id', sessions_subquery.c.id,
-                        'is_active', sessions_subquery.c.is_active,
-                        'created_at', sessions_subquery.c.created_at,
-                        'deactivated_at', sessions_subquery.c.deactivated_at
+                    func.distinct(
+                        func.jsonb_build_object(
+                            'id', sessions_subquery.c.id,
+                            'is_active', sessions_subquery.c.is_active,
+                            'created_at', sessions_subquery.c.created_at,
+                            'deactivated_at', sessions_subquery.c.deactivated_at
+                        )
                     )
                 ).filter(sessions_subquery.c.id.isnot(None)),
                 []
@@ -97,12 +104,11 @@ async def update_user(
     user_id: int,
     name: str,
     username: str,
-    password_hash: str,
-    is_active: bool
+    password_hash: str
 ) -> None:
     query = (
         Update(User)
-        .values(name=name, username=username, password_hash=password_hash, is_active=is_active)
+        .values(name=name, username=username, password_hash=password_hash)
         .where(User.id == user_id)
     )
 
