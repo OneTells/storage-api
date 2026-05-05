@@ -8,7 +8,7 @@ from core.exceptions import APIException
 from core.methods import get_connection, get_current_user, require_permissions
 from core.schemes import UserModel
 from modules.users.profile import repositories
-from modules.users.profile.schemes import ProfileRead, ProfileUpdate
+from modules.users.profile.schemes import ProfileChangePassword, ProfileRead, ProfileUpdate
 from modules.users.utils import hash_password
 
 router = APIRouter()
@@ -73,11 +73,29 @@ async def update_profile(
                 message="Пользователь с таким именем уже существует"
             )
 
-    password_hash = hash_password(payload.password)
     await repositories.update_user(
         connection,
         user.id,
         payload.name,
-        payload.username,
+        payload.username
+    )
+
+
+@router.put(
+    "/profile/password",
+    response_model=None,
+    status_code=204,
+    dependencies=[Depends(require_permissions('profile.update'))],
+    summary="Сменить пароль текущего пользователя",
+)
+async def change_password(
+    connection: Annotated[Connection, Depends(get_connection)],
+    user: Annotated[UserModel, Depends(get_current_user)],
+    payload: Annotated[ProfileChangePassword, Body()],
+):
+    password_hash = hash_password(payload.new_password)
+    await repositories.update_user_password(
+        connection,
+        user.id,
         password_hash
     )

@@ -103,12 +103,25 @@ async def update_user(
     connection: Connection,
     user_id: int,
     name: str,
-    username: str,
+    username: str
+) -> None:
+    query = (
+        Update(User)
+        .values(name=name, username=username)
+        .where(User.id == user_id)
+    )
+
+    await connection.execute(query)
+
+
+async def update_user_password(
+    connection: Connection,
+    user_id: int,
     password_hash: str
 ) -> None:
     query = (
         Update(User)
-        .values(name=name, username=username, password_hash=password_hash)
+        .values(password_hash=password_hash)
         .where(User.id == user_id)
     )
 

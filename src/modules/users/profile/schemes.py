@@ -49,4 +49,7 @@ class ProfileRead(BaseModel):
 class ProfileUpdate(BaseModel):
     name: NameField
     username: UsernameField
-    password: PasswordField
+
+
+class ProfileChangePassword(BaseModel):
+    new_password: PasswordField
