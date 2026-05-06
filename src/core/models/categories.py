@@ -11,7 +11,6 @@ class Category(Base):
     __tablename__ = "categories"
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
-
     name: Mapped[str] = mapped_column(TEXT, unique=True)
     description: Mapped[str] = mapped_column(TEXT)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
@@ -20,12 +19,12 @@ class Category(Base):
 class CategoryObject(Base):
     __tablename__ = "category_objects"
 
-    category_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(Category.id), primary_key=True)
-    object_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(Object.id), primary_key=True)
+    category_id: Mapped[int] = mapped_column(ForeignKey(Category.id), primary_key=True)
+    object_id: Mapped[int] = mapped_column(ForeignKey(Object.id), primary_key=True)
 
 
 class CategorySubcategory(Base):
     __tablename__ = "category_subcategories"
 
-    category_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(Category.id), primary_key=True)
-    subcategory_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(Category.id, ondelete="CASCADE"), primary_key=True)
+    category_id: Mapped[int] = mapped_column(ForeignKey(Category.id), primary_key=True)
+    subcategory_id: Mapped[int] = mapped_column(ForeignKey(Category.id, ondelete="CASCADE"), primary_key=True)

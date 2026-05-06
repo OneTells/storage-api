@@ -1,194 +1,287 @@
-import uuid
 from datetime import datetime
+from decimal import Decimal
 from enum import auto, StrEnum
 
-from sqlalchemy import BigInteger, Enum, ForeignKey, func, Identity, Numeric, Text, TIMESTAMP, Uuid
+from sqlalchemy import BigInteger, Enum, ForeignKey, func, Identity, Numeric, String, Text, TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column
 
+from core.models.counterparties import Counterparty
+from core.models.objects import Object
+from core.models.users import User
+from core.models.warehouses import Warehouse
+from . import ProductionOrder
 from .base import Base
-from .customers import Customer
-from .object_units import ObjectUnit, ObjectUnitStatus
-from .suppliers import Supplier
-from .users import User
-from .warehouses import Warehouse
+from .batches import Batch
 
 
-class StockOperationType(StrEnum):
-    RECEIPT = auto()  # Приёмка от поставщика
-    RETURN_FROM_PRODUCTION = auto()  # Возврат материалов из производства
-    PRODUCTION_OUTPUT = auto()  # Выпуск готовой продукции
-    RETURN_FROM_CUSTOMER = auto()  # Возврат от клиента
-
-    WRITE_OFF_TO_PRODUCTION = auto()  # Списание в производство
-    SHIPMENT = auto()  # Отгрузка клиенту
-    RETURN_TO_SUPPLIER = auto()  # Возврат поставщику
-
-    INVENTORY_ADJUSTMENT = auto()  # Инвентаризация / корректировка остатков
-    TRANSFER_BETWEEN_WAREHOUSES = auto()  # Перемещение между складами
-    RESERVATION = auto()  # Резервирование
+class OperationStatus(StrEnum):
+    DRAFT = "DRAFT"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
 
 
-class StockOperation(Base):
-    __tablename__ = "stock_operations"
+# ---- 1. Приёмка от поставщика ----
+class ReceiptStatus(StrEnum):
+    DRAFT = "DRAFT"
+    ORDERED = "ORDERED"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
+
+
+class Receipt(Base):
+    __tablename__ = "receipts"
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
-    type: Mapped[StockOperationType] = mapped_column(Enum(StockOperationType))
-    name: Mapped[str] = mapped_column(Text)
-    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(User.id))
+
+    performed_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True))
+    counterparty_id: Mapped[int] = mapped_column(ForeignKey(Counterparty.id))
+    warehouse_id: Mapped[int] = mapped_column(ForeignKey(Warehouse.id))
+
+    shipping_price: Mapped[Decimal] = mapped_column(Numeric(15, 2))
+    discount: Mapped[Decimal] = mapped_column(Numeric(15, 2))
+
+    status: Mapped[ReceiptStatus] = mapped_column(Enum(ReceiptStatus), server_default=ReceiptStatus.DRAFT)
+
+    created_by_id: Mapped[int] = mapped_column(ForeignKey(User.id))
+
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
+    completed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    cancelled_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
 
 
-class StockOperationUnit(Base):
-    __tablename__ = "stock_operation_units"
+class ReceiptItem(Base):
+    __tablename__ = "receipt_items"
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
-    operation_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(StockOperation.id, ondelete="CASCADE"), index=True)
-    object_unit_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey(ObjectUnit.id), index=True)
+    operation_id: Mapped[int] = mapped_column(ForeignKey(Receipt.id, ondelete="CASCADE"))
 
-    old_warehouse_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey(Warehouse.id))
-    new_warehouse_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey(Warehouse.id))
+    object_id: Mapped[int] = mapped_column(ForeignKey(Object.id))
+    quantity: Mapped[Decimal] = mapped_column(Numeric(15, 3))
+    unit_price: Mapped[Decimal] = mapped_column(Numeric(15, 2))
 
-    old_status: Mapped[ObjectUnitStatus | None] = mapped_column(Enum(ObjectUnitStatus))
-    new_status: Mapped[ObjectUnitStatus | None] = mapped_column(Enum(ObjectUnitStatus))
-
-
-class ReceiptDetail(Base):
-    __tablename__ = "receipt_details"
-
-    operation_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(StockOperation.id, ondelete="CASCADE"), primary_key=True)
-    supplier_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(Supplier.id))
+    batch_id: Mapped[int | None] = mapped_column(ForeignKey(Batch.id))
 
 
-class ReceiptUnitDetail(Base):
-    __tablename__ = "receipt_unit_details"
+# ---- 2. Выпуск готовой продукции (из производства) ----
+class ProductionOutput(Base):
+    __tablename__ = "production_outputs"
 
-    unit_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(StockOperationUnit.id, ondelete="CASCADE"), primary_key=True)
-    price: Mapped[float | None] = mapped_column(Numeric(12, 2))
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
 
+    performed_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True))
+    production_order_id: Mapped[int] = mapped_column(ForeignKey(ProductionOrder.id))
+    warehouse_id: Mapped[int] = mapped_column(ForeignKey(Warehouse.id))
 
-class WriteOffToProductionDetail(Base):
-    __tablename__ = "write_off_to_production_details"
+    status: Mapped[OperationStatus] = mapped_column(Enum(OperationStatus), server_default=OperationStatus.DRAFT)
 
-    operation_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(StockOperation.id, ondelete="CASCADE"), primary_key=True)
-    order_id: Mapped[int] = mapped_column(BigInteger)
+    created_by_id: Mapped[int] = mapped_column(ForeignKey(User.id))
 
-
-class WriteOffToProductionUnitDetail(Base):
-    __tablename__ = "write_off_to_production_unit_details"
-
-    unit_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(StockOperationUnit.id, ondelete="CASCADE"), primary_key=True)
-
-
-class ProductionOutputDetail(Base):
-    __tablename__ = "production_output_details"
-
-    operation_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(StockOperation.id, ondelete="CASCADE"), primary_key=True)
-    order_id: Mapped[int] = mapped_column(BigInteger)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
+    completed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    cancelled_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
 
 
-class ProductionOutputUnitDetail(Base):
-    __tablename__ = "production_output_unit_details"
+class ProductionOutputItem(Base):
+    __tablename__ = "production_output_items"
 
-    unit_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(StockOperationUnit.id, ondelete="CASCADE"), primary_key=True)
-    cost_price: Mapped[float | None] = mapped_column(Numeric(12, 2))
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    operation_id: Mapped[int] = mapped_column(ForeignKey(ProductionOutput.id, ondelete="CASCADE"))
 
+    object_id: Mapped[int] = mapped_column(ForeignKey(Object.id))
+    quantity: Mapped[Decimal] = mapped_column(Numeric(15, 3))
+    unit_price: Mapped[Decimal] = mapped_column(Numeric(15, 2))
 
-class ShipmentDetail(Base):
-    __tablename__ = "shipment_details"
-
-    operation_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(StockOperation.id, ondelete="CASCADE"), primary_key=True)
-    customer_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(Customer.id))
-
-
-class ShipmentUnitDetail(Base):
-    __tablename__ = "shipment_unit_details"
-
-    unit_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(StockOperationUnit.id, ondelete="CASCADE"), primary_key=True)
-    sale_price: Mapped[float] = mapped_column(Numeric(12, 2))
+    batch_id: Mapped[int | None] = mapped_column(ForeignKey(Batch.id))
 
 
-class ReturnFromProductionDetail(Base):
-    __tablename__ = "return_from_production_details"
+# ---- 3. Списание в производство ----
+class WriteOffToProduction(Base):
+    __tablename__ = "write_offs_to_production"
 
-    operation_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(StockOperation.id, ondelete="CASCADE"), primary_key=True)
-    order_id: Mapped[int] = mapped_column(BigInteger)
-    reason: Mapped[str | None] = mapped_column(Text)
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
 
+    performed_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True))
+    warehouse_id: Mapped[int] = mapped_column(ForeignKey(Warehouse.id))
+    production_order_id: Mapped[str | None] = mapped_column(String(100))
 
-class ReturnFromProductionUnitDetail(Base):
-    __tablename__ = "return_from_production_unit_details"
+    status: Mapped[OperationStatus] = mapped_column(Enum(OperationStatus), server_default=OperationStatus.DRAFT)
 
-    unit_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(StockOperationUnit.id, ondelete="CASCADE"), primary_key=True)
-    reason: Mapped[str | None] = mapped_column(Text)
+    created_by_id: Mapped[int] = mapped_column(ForeignKey(User.id))
 
-
-class InventoryAdjustmentDetail(Base):
-    __tablename__ = "inventory_adjustment_details"
-
-    operation_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(StockOperation.id, ondelete="CASCADE"), primary_key=True)
-    inventory_date: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True))
-    reason: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
+    completed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    cancelled_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
 
 
-class InventoryAdjustmentUnitDetail(Base):
-    __tablename__ = "inventory_adjustment_unit_details"
+class WriteOffToProductionItem(Base):
+    __tablename__ = "write_off_to_production_items"
 
-    unit_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(StockOperationUnit.id, ondelete="CASCADE"), primary_key=True)
-    reason: Mapped[str | None] = mapped_column(Text)
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    operation_id: Mapped[int] = mapped_column(ForeignKey(WriteOffToProduction.id, ondelete="CASCADE"))
 
+    object_id: Mapped[int] = mapped_column(ForeignKey(Object.id))
+    quantity: Mapped[Decimal] = mapped_column(Numeric(15, 3))
+    unit_price: Mapped[Decimal] = mapped_column(Numeric(15, 2))
 
-class ReservationDetail(Base):
-    __tablename__ = "reservation_details"
-
-    operation_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(StockOperation.id, ondelete="CASCADE"), primary_key=True)
-    order_id: Mapped[int] = mapped_column(BigInteger)
-
-
-class ReservationUnitDetail(Base):
-    __tablename__ = "reservation_unit_details"
-
-    unit_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(StockOperationUnit.id, ondelete="CASCADE"), primary_key=True)
+    batch_id: Mapped[int | None] = mapped_column(ForeignKey(Batch.id))
 
 
-class ReturnToSupplierDetail(Base):
-    __tablename__ = "return_to_supplier_details"
+# ---- 4. Отгрузка клиенту ----
+class Shipment(Base):
+    __tablename__ = "shipments"
 
-    operation_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(StockOperation.id, ondelete="CASCADE"), primary_key=True)
-    supplier_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(Supplier.id))
-    reason: Mapped[str | None] = mapped_column(Text)
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
 
+    performed_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True))
+    counterparty_id: Mapped[int] = mapped_column(ForeignKey(Counterparty.id))
+    warehouse_id: Mapped[int] = mapped_column(ForeignKey(Warehouse.id))
+    order_number: Mapped[str | None] = mapped_column(String(100))
 
-class ReturnToSupplierUnitDetail(Base):
-    __tablename__ = "return_to_supplier_unit_details"
+    status: Mapped[OperationStatus] = mapped_column(Enum(OperationStatus), server_default=OperationStatus.DRAFT)
 
-    unit_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(StockOperationUnit.id, ondelete="CASCADE"), primary_key=True)
-    reason: Mapped[str | None] = mapped_column(Text)
+    created_by_id: Mapped[int] = mapped_column(ForeignKey(User.id))
 
-
-class ReturnFromCustomerDetail(Base):
-    __tablename__ = "return_from_customer_details"
-
-    operation_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(StockOperation.id, ondelete="CASCADE"), primary_key=True)
-    customer_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(Customer.id))
-    reason: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
+    completed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    cancelled_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
 
 
-class ReturnFromCustomerUnitDetail(Base):
-    __tablename__ = "return_from_customer_unit_details"
+class ShipmentItem(Base):
+    __tablename__ = "shipment_items"
 
-    unit_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(StockOperationUnit.id, ondelete="CASCADE"), primary_key=True)
-    reason: Mapped[str | None] = mapped_column(Text)
-    condition: Mapped[str | None] = mapped_column(Text)
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    operation_id: Mapped[int] = mapped_column(ForeignKey(Shipment.id, ondelete="CASCADE"))
 
+    object_id: Mapped[int] = mapped_column(ForeignKey(Object.id))
+    quantity: Mapped[Decimal] = mapped_column(Numeric(15, 3))
 
-class TransferDetail(Base):
-    __tablename__ = "transfer_details"
-
-    operation_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(StockOperation.id, ondelete="CASCADE"), primary_key=True)
-    comment: Mapped[str | None] = mapped_column(Text)
+    batch_id: Mapped[int | None] = mapped_column(ForeignKey(Batch.id))
 
 
-class TransferUnitDetail(Base):
-    __tablename__ = "transfer_unit_details"
+# ---- 5. Инвентаризация / корректировка остатков ----
+class InventoryAdjustment(Base):
+    __tablename__ = "inventory_adjustments"
 
-    unit_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(StockOperationUnit.id, ondelete="CASCADE"), primary_key=True)
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+
+    performed_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True))
+    warehouse_id: Mapped[int] = mapped_column(ForeignKey(Warehouse.id))
+    description: Mapped[str] = mapped_column(Text)
+
+    status: Mapped[OperationStatus] = mapped_column(Enum(OperationStatus), server_default=OperationStatus.DRAFT)
+
+    created_by_id: Mapped[int] = mapped_column(ForeignKey(User.id))
+
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
+    completed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    cancelled_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+
+
+class InventoryAdjustmentItem(Base):
+    __tablename__ = "inventory_adjustment_items"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    operation_id: Mapped[int] = mapped_column(ForeignKey(InventoryAdjustment.id, ondelete="CASCADE"))
+
+    object_id: Mapped[int] = mapped_column(ForeignKey(Object.id))
+
+    expected_qty: Mapped[Decimal] = mapped_column(Numeric(15, 3))  # учётное количество
+    actual_qty: Mapped[Decimal] = mapped_column(Numeric(15, 3))  # фактическое
+
+
+class InventoryAdjustmentItemDetails(Base):
+    __tablename__ = "inventory_adjustment_item_details"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    item_id: Mapped[int] = mapped_column(ForeignKey(InventoryAdjustmentItem.id, ondelete="CASCADE"))
+
+    batch_id: Mapped[int] = mapped_column(ForeignKey(Batch.id))
+    quantity: Mapped[Decimal] = mapped_column(Numeric(15, 3))
+
+
+# ---- 6. Перемещение между складами ----
+class Transfer(Base):
+    __tablename__ = "transfers"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+
+    performed_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True))
+    from_warehouse_id: Mapped[int] = mapped_column(ForeignKey(Warehouse.id))
+    to_warehouse_id: Mapped[int] = mapped_column(ForeignKey(Warehouse.id))
+
+    status: Mapped[OperationStatus] = mapped_column(Enum(OperationStatus), server_default=OperationStatus.DRAFT)
+
+    created_by_id: Mapped[int] = mapped_column(ForeignKey(User.id))
+
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
+    completed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    cancelled_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+
+
+class TransferItem(Base):
+    __tablename__ = "transfer_items"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    operation_id: Mapped[int] = mapped_column(ForeignKey(Transfer.id, ondelete="CASCADE"))
+
+    object_id: Mapped[int] = mapped_column(ForeignKey(Object.id))
+    quantity: Mapped[Decimal] = mapped_column(Numeric(15, 3))
+
+    old_batch_id: Mapped[int | None] = mapped_column(ForeignKey(Batch.id))
+    new_batch_id: Mapped[int | None] = mapped_column(ForeignKey(Batch.id))
+
+
+# ---- 7. Резервирование ----
+class ReservationStatus(StrEnum):
+    ACTIVE = "ACTIVE"
+    RELEASED = "RELEASED"
+    CANCELLED = "CANCELLED"
+
+
+class Reservation(Base):
+    __tablename__ = "reservations"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+
+    batch_id: Mapped[int] = mapped_column(ForeignKey(Batch.id))
+    quantity: Mapped[Decimal] = mapped_column(Numeric(15, 3))
+
+    status: Mapped[ReservationStatus] = mapped_column(Enum(ReservationStatus), server_default=ReservationStatus.ACTIVE)
+
+    created_by_id: Mapped[int] = mapped_column(ForeignKey(User.id))
+
+    reserved_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
+    released_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    cancelled_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+
+
+# ---- 8. Прочее списание (порча, утеря, и т.п.) ----
+class WriteOff(Base):
+    __tablename__ = "write_offs"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+
+    performed_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True))
+    warehouse_id: Mapped[int] = mapped_column(ForeignKey(Warehouse.id))
+    reason: Mapped[str] = mapped_column(Text)
+
+    status: Mapped[OperationStatus] = mapped_column(Enum(OperationStatus), server_default=OperationStatus.DRAFT)
+
+    created_by_id: Mapped[int] = mapped_column(ForeignKey(User.id))
+
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
+    completed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    cancelled_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+
+
+class WriteOffItem(Base):
+    __tablename__ = "write_off_items_general"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    operation_id: Mapped[int] = mapped_column(ForeignKey(WriteOff.id, ondelete="CASCADE"))
+
+    object_id: Mapped[int] = mapped_column(ForeignKey(Object.id))
+    quantity: Mapped[Decimal] = mapped_column(Numeric(15, 3))
+    reason: Mapped[str] = mapped_column(Text)
+
+    batch_id: Mapped[int | None] = mapped_column(ForeignKey(Batch.id))

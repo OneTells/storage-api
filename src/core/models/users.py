@@ -11,7 +11,6 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
-
     name: Mapped[str] = mapped_column(Text)
     username: Mapped[str] = mapped_column(Text, unique=True)
     password_hash: Mapped[str] = mapped_column(Text)
@@ -23,9 +22,7 @@ class UserSession(Base):
     __tablename__ = "user_sessions"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, server_default=func.uuidv7())
-
-    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(User.id))
-
+    user_id: Mapped[int] = mapped_column(ForeignKey(User.id))
     is_active: Mapped[bool] = mapped_column(Boolean, server_default=true())
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
     deactivated_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
@@ -43,7 +40,6 @@ class Role(Base):
     __tablename__ = "roles"
 
     id: Mapped[int] = mapped_column(SmallInteger, Identity(always=True), primary_key=True)
-
     name: Mapped[str] = mapped_column(Text, unique=True)
     description: Mapped[str] = mapped_column(Text)
 
@@ -52,7 +48,6 @@ class Permission(Base):
     __tablename__ = "permissions"
 
     id: Mapped[int] = mapped_column(SmallInteger, Identity(always=True), primary_key=True)
-
     name: Mapped[str] = mapped_column(Text, unique=True)
     codename: Mapped[str] = mapped_column(Text, unique=True)
 
