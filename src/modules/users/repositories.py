@@ -15,10 +15,12 @@ async def fetch_users(connection: Connection, page: int, limit: int, is_active: 
             User.created_at,
             func.coalesce(
                 func.array_agg(
-                    func.jsonb_build_object(
-                        'id', Role.id,
-                        'name', Role.name,
-                        'description', Role.description
+                    func.distinct(
+                        func.jsonb_build_object(
+                            'id', Role.id,
+                            'name', Role.name,
+                            'description', Role.description
+                        )
                     )
                 ).filter(Role.id.isnot(None)),
                 []

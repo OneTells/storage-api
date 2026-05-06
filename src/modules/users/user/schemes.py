@@ -24,7 +24,6 @@ class UserCreateResponse(BaseModel):
 class UserUpdate(BaseModel):
     name: NameField
     username: UsernameField
-    password: PasswordField
     is_active: IsActiveField
 
 

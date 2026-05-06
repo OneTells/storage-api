@@ -16,20 +16,24 @@ async def get_user_by_id(connection: Connection, user_id: int) -> Record | None:
             User.created_at,
             func.coalesce(
                 func.array_agg(
-                    func.jsonb_build_object(
-                        'id', Role.id,
-                        'name', Role.name,
-                        'description', Role.description
+                    func.distinct(
+                        func.jsonb_build_object(
+                            'id', Role.id,
+                            'name', Role.name,
+                            'description', Role.description
+                        )
                     )
                 ).filter(Role.id.isnot(None)),
                 []
             ).label('roles'),
             func.coalesce(
                 func.array_agg(
-                    func.jsonb_build_object(
-                        'id', Permission.id,
-                        'name', Permission.name,
-                        'codename', Permission.codename
+                    func.distinct(
+                        func.jsonb_build_object(
+                            'id', Permission.id,
+                            'name', Permission.name,
+                            'codename', Permission.codename
+                        )
                     )
                 ).filter(Permission.id.isnot(None)),
                 []
@@ -115,12 +119,11 @@ async def update_user(
     user_id: int,
     name: str,
     username: str,
-    password_hash: str,
     is_active: bool
 ) -> None:
     query = (
         Update(User)
-        .values(name=name, username=username, password_hash=password_hash, is_active=is_active)
+        .values(name=name, username=username, is_active=is_active)
         .where(User.id == user_id)
     )
 

@@ -2,6 +2,7 @@ from typing import Annotated
 
 from everbase import Connection
 from fastapi import APIRouter, Depends, Query
+from orjson import loads
 
 from core.methods import get_connection, require_permissions
 from core.schemes import Pagination
@@ -24,11 +25,18 @@ async def get_roles(
     page: Annotated[int, Query(ge=1, description="Номер страницы")],
     limit: Annotated[int, Query(ge=1, le=1000, description="Количество элементов на странице")] = 100
 ):
-    roles = await repositories.fetch_roles(connection, page, limit)
+    roles_data = await repositories.fetch_roles(connection, page, limit)
     total = await repositories.count_roles(connection)
 
+    roles = []
+
+    for role in roles_data:
+        role = dict(role)
+        role['permissions'] = [loads(x) for x in role['permissions']]
+        roles.append(RoleRead(**role))
+
     return RolesReadResponse(
-        roles=[RoleRead(**x) for x in roles],
+        roles=roles,
         pagination=Pagination(
             page=page,
             limit=limit,

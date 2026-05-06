@@ -5,7 +5,7 @@ from sqlalchemy import func, Select, Update
 from core.models import Permission, Role, RolePermission, User, UserRole, UserSession
 
 
-async def get_user_profile_data(connection: Connection, user_id: int, sessions_limit: int) -> Record | None:
+async def get_user_profile_data(connection: Connection, user_id: int, sessions_limit: int) -> Record:
     sessions_subquery = (
         Select(
             UserSession.id,
@@ -74,7 +74,7 @@ async def get_user_profile_data(connection: Connection, user_id: int, sessions_l
         .group_by(User.id, User.name, User.username, User.is_active, User.created_at)
     )
 
-    return await connection.fetch_row(query)
+    return await connection.fetch_row(query)  # type: ignore
 
 
 async def exist_user_by_username(connection: Connection, username: str) -> bool:
@@ -90,7 +90,7 @@ async def exist_user_by_username(connection: Connection, username: str) -> bool:
     return await connection.fetch_val(query)
 
 
-async def get_user_username(connection: Connection, user_id: int) -> str | None:
+async def get_user_username(connection: Connection, user_id: int) -> str:
     query = (
         Select(User.username)
         .where(User.id == user_id)
@@ -123,6 +123,40 @@ async def update_user_password(
         Update(User)
         .values(password_hash=password_hash)
         .where(User.id == user_id)
+    )
+
+    await connection.execute(query)
+
+
+async def exist_user_session(connection: Connection, user_id: int, session_id: str) -> bool:
+    query = (
+        Select(
+            Select(1)
+            .select_from(UserSession)
+            .where(
+                UserSession.user_id == user_id,
+                UserSession.id == session_id,
+                UserSession.is_active == True,
+            )
+            .exists()
+        )
+    )
+
+    return await connection.fetch_val(query)
+
+
+async def deactivate_user_session(connection: Connection, user_id: int, session_id: str) -> None:
+    query = (
+        Update(UserSession)
+        .values(
+            is_active=False,
+            deactivated_at=func.now()
+        )
+        .where(
+            UserSession.user_id == user_id,
+            UserSession.id == session_id,
+            UserSession.is_active == True,
+        )
     )
 
     await connection.execute(query)

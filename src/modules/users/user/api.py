@@ -2,13 +2,17 @@ from typing import Annotated
 
 from everbase import Connection
 from fastapi import APIRouter, Body, Depends, Path, Query
+from orjson import loads
 
 from core.exceptions import APIException
 from core.methods import get_connection, require_permissions
 from modules.users.schemes import UserReadWithPermissions
 from modules.users.user import repositories
 from modules.users.user.responses import USER_LOGIN_CONFLICT, USER_NOT_FOUND, USER_ROLE_404, USER_SESSION_404
-from modules.users.user.schemes import UserChangePassword, UserCreate, UserCreateResponse, UserSessionsResponse, UserUpdate
+from modules.users.user.schemes import (
+    UserChangePassword, UserCreate, UserCreateResponse, UserSession, UserSessionsResponse,
+    UserUpdate
+)
 from modules.users.utils import hash_password
 
 router = APIRouter()
@@ -61,16 +65,20 @@ async def get_user(
     connection: Annotated[Connection, Depends(get_connection)],
     user_id: Annotated[int, Path(ge=1, description="Идентификатор пользователя")]
 ):
-    user = await repositories.get_user_by_id(connection, user_id)
+    user_data = await repositories.get_user_by_id(connection, user_id)
 
-    if user is None:
+    if user_data is None:
         raise APIException(
             status_code=404,
             code="USER_NOT_FOUND",
             message="Пользователь не найден"
         )
 
-    return UserReadWithPermissions.model_validate(user)
+    user = dict(user_data)
+    user['roles'] = [loads(x) for x in user['roles']]
+    user['permissions'] = [loads(x) for x in user['permissions']]
+
+    return UserReadWithPermissions(**user)
 
 
 @router.put(
@@ -108,13 +116,11 @@ async def update_user(
                 message="Пользователь с таким именем уже существует"
             )
 
-    password_hash = hash_password(payload.password)
     await repositories.update_user(
         connection,
         user_id,
         payload.name,
         payload.username,
-        password_hash,
         payload.is_active
     )
 
@@ -269,7 +275,7 @@ async def get_user_sessions(
         )
 
     sessions = await repositories.get_user_sessions(connection, user_id, sessions_limit)
-    return UserSessionsResponse.model_validate(sessions)
+    return UserSessionsResponse(sessions=[UserSession(**x) for x in sessions])
 
 
 @router.delete(

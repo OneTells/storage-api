@@ -7,7 +7,7 @@ from core.models import Permission
 
 async def fetch_permissions(connection: Connection, page: int, limit: int) -> list[Record]:
     query = (
-        Select(Permission)
+        Select(Permission.id, Permission.name, Permission.codename)
         .offset((page - 1) * limit)
         .limit(limit)
     )

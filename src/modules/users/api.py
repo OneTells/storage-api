@@ -2,6 +2,7 @@ from typing import Annotated
 
 from everbase import Connection
 from fastapi import APIRouter, Depends, Query
+from orjson import loads
 
 from core.methods import get_connection, require_permissions
 from core.schemes import Pagination
@@ -11,8 +12,8 @@ from modules.users.schemes import UserRead, UsersReadResponse
 from modules.users.user.api import router as user_router
 
 router = APIRouter(prefix="/users", tags=["Управление пользователями"])
-router.include_router(user_router)
 router.include_router(profile_router)
+router.include_router(user_router)
 
 
 @router.get(
@@ -27,11 +28,18 @@ async def get_users(
     limit: Annotated[int, Query(ge=1, le=1000, description="Количество элементов на странице")] = 100,
     is_active: Annotated[bool | None, Query(description="Фильтр по активности пользователя")] = None
 ):
-    users = await repositories.fetch_users(connection, page, limit, is_active)
+    users_data = await repositories.fetch_users(connection, page, limit, is_active)
     total = await repositories.count_users(connection, is_active)
 
+    users = []
+
+    for user in users_data:
+        user = dict(user)
+        user['roles'] = [loads(x) for x in user['roles']]
+        users.append(UserRead(**user))
+
     return UsersReadResponse(
-        users=[UserRead(**user) for user in users],
+        users=users,
         pagination=Pagination(
             page=page,
             limit=limit,
