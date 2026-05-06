@@ -17,7 +17,7 @@ from modules.categories.schemes import (
     CategoryUpdate,
     SubcategoriesReadResponse,
 )
-from modules.objects.schemes import ObjectsReadResponse
+from old_modules.objects.schemes import ObjectsReadResponse
 
 router = APIRouter()
 

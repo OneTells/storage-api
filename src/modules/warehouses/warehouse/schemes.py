@@ -1,11 +1,11 @@
 from pydantic import BaseModel
 
-from modules.warehouses.schemes import AddressField, IdField, IsActiveField, NameField
+from modules.warehouses.schemes import CommentField, IdField, IsActiveField, NameField
 
 
 class WarehouseCreate(BaseModel):
     name: NameField
-    address: AddressField
+    comment: CommentField
     is_active: IsActiveField
 
 
@@ -15,5 +15,5 @@ class WarehouseCreateResponse(BaseModel):
 
 class WarehouseUpdate(BaseModel):
     name: NameField
-    address: AddressField
+    comment: CommentField
     is_active: IsActiveField

@@ -1,8 +1,8 @@
+from asyncpg import Record
 from everbase import Connection
 from sqlalchemy import func, Select
 
 from core.models import Warehouse
-from modules.warehouses.schemes import WarehouseRead
 
 
 async def fetch_warehouses(
@@ -10,12 +10,12 @@ async def fetch_warehouses(
     page: int,
     limit: int,
     is_active: bool | None = None
-) -> list[WarehouseRead]:
+) -> list[Record]:
     query = (
         Select(
             Warehouse.id,
             Warehouse.name,
-            Warehouse.address,
+            Warehouse.comment,
             Warehouse.is_active,
             Warehouse.created_at
         )
@@ -27,7 +27,7 @@ async def fetch_warehouses(
     if is_active is not None:
         query = query.where(Warehouse.is_active == is_active)
 
-    return await connection.fetch(query, model=WarehouseRead)
+    return await connection.fetch(query)
 
 
 async def count_warehouses(connection: Connection, is_active: bool | None = None) -> int:

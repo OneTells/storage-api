@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query
 from core.methods import get_connection, require_permissions
 from core.schemes import Pagination
 from modules.warehouses import repositories
-from modules.warehouses.schemes import WarehousesReadResponse
+from modules.warehouses.schemes import WarehouseRead, WarehousesReadResponse
 from modules.warehouses.warehouse.api import router as warehouse_router
 
 router = APIRouter(prefix="/warehouses", tags=["Управление складом"])
@@ -29,7 +29,7 @@ async def get_warehouses(
     total = await repositories.count_warehouses(connection, is_active)
 
     return WarehousesReadResponse(
-        warehouses=warehouses,
+        warehouses=[WarehouseRead(**x) for x in warehouses],
         pagination=Pagination(
             page=page,
             limit=limit,
