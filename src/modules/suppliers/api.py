@@ -4,7 +4,9 @@ from everbase import Connection
 from fastapi import APIRouter, Depends, Query
 
 from core.methods import get_connection, require_permissions
-from modules.suppliers.schemes import SuppliersReadResponse
+from core.schemes import Pagination
+from modules.suppliers import repositories
+from modules.suppliers.schemes import supplier_read_adapter, SuppliersReadResponse
 from modules.suppliers.supplier.api import router as supplier_router
 
 router = APIRouter(prefix="/suppliers", tags=["Управление поставщиками"])
@@ -23,4 +25,17 @@ async def get_suppliers(
     limit: Annotated[int, Query(ge=1, le=1000, description="Количество элементов на странице")] = 100,
     is_active: Annotated[bool | None, Query(description="Фильтр по активности поставщика")] = None
 ):
-    raise NotImplementedError
+    suppliers_data = await repositories.fetch_suppliers(connection, page, limit, is_active)
+    total = await repositories.count_suppliers(connection, is_active)
+
+    return SuppliersReadResponse(
+        suppliers=[supplier_read_adapter.validate_python(dict(x)) for x in suppliers_data],
+        pagination=Pagination(
+            page=page,
+            limit=limit,
+            total=total,
+            pages=(total + limit - 1) // limit,
+            has_next=page * limit < total,
+            has_prev=page > 1
+        )
+    )

@@ -1,17 +1,60 @@
-from pydantic import BaseModel
+from typing import Annotated, Literal
 
-from modules.suppliers.schemes import IdField, IsActiveField, NameField
+from pydantic import BaseModel, Field
+
+from core.models import CounterpartyType
+from modules.suppliers.schemes import (
+    CommentField, DirectorField, DirectorPositionField, EmailField, IdField, InnField, IsActiveField, KppField,
+    LegalAddressField, NameField, OgrnField, PhoneField
+)
 
 
-class SupplierCreate(BaseModel):
+class SupplierBasePayload(BaseModel):
     name: NameField
+    phone: PhoneField
+    email: EmailField
+    comment: CommentField
     is_active: IsActiveField
+
+
+class SupplierIndividualPayload(SupplierBasePayload):
+    type: Literal[CounterpartyType.INDIVIDUAL]
+
+
+class SupplierEntrepreneurPayload(SupplierBasePayload):
+    type: Literal[CounterpartyType.ENTREPRENEUR]
+
+    inn: InnField
+    ogrn: OgrnField
+    legal_address: LegalAddressField
+
+
+class SupplierLegalEntityPayload(SupplierBasePayload):
+    type: Literal[CounterpartyType.LEGAL_ENTITY]
+
+    inn: InnField
+    kpp: KppField
+    ogrn: OgrnField
+    legal_address: LegalAddressField
+    director: DirectorField
+    director_position: DirectorPositionField
+
+
+SupplierCreate = Annotated[
+    SupplierIndividualPayload |
+    SupplierEntrepreneurPayload |
+    SupplierLegalEntityPayload,
+    Field(discriminator="type")
+]
 
 
 class SupplierCreateResponse(BaseModel):
     id: IdField
 
 
-class SupplierUpdate(BaseModel):
-    name: NameField
-    is_active: IsActiveField
+SupplierUpdate = Annotated[
+    SupplierIndividualPayload |
+    SupplierEntrepreneurPayload |
+    SupplierLegalEntityPayload,
+    Field(discriminator="type")
+]
