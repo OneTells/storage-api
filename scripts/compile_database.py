@@ -12,7 +12,7 @@ from core.models.base import Base
 
 def main() -> None:
     current_dialect = dialect()
-    end = ';'
+    end = '\n;'
 
     # Генерация SQL для всех enum
     enums = [
