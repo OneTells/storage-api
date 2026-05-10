@@ -22,7 +22,7 @@ router = APIRouter()
     "/",
     response_model=CategoryCreateResponse,
     status_code=201,
-    dependencies=[Depends(require_permissions("category.create"))],
+    dependencies=[Depends(require_permissions("material.category.create"))],
     summary="Создать категорию",
 )
 async def create_category(
@@ -36,7 +36,7 @@ async def create_category(
 @router.get(
     "/{category_id}",
     response_model=CategoryRead,
-    dependencies=[Depends(require_permissions("category.read"))],
+    dependencies=[Depends(require_permissions("material.category.read"))],
     summary="Получить категорию",
     responses={
         404: CATEGORY_NOT_FOUND,
@@ -62,7 +62,7 @@ async def get_category(
     "/{category_id}",
     response_model=None,
     status_code=204,
-    dependencies=[Depends(require_permissions("category.update"))],
+    dependencies=[Depends(require_permissions("material.category.update"))],
     summary="Обновить категорию",
     responses={
         404: CATEGORY_NOT_FOUND,
@@ -89,7 +89,7 @@ async def update_category(
     "/{category_id}",
     response_model=None,
     status_code=204,
-    dependencies=[Depends(require_permissions("category.delete"))],
+    dependencies=[Depends(require_permissions("material.category.delete"))],
     summary="Удалить категорию",
     responses={
         404: CATEGORY_NOT_FOUND,
@@ -138,7 +138,7 @@ async def delete_category(
     "/{category_id}/materials/{material_id}",
     response_model=None,
     status_code=204,
-    dependencies=[Depends(require_permissions("category.material.assign"))],
+    dependencies=[Depends(require_permissions("material.category.material.assign"))],
     summary="Привязать материал к категории",
     responses={
         404: CATEGORY_OBJECT_404,
@@ -174,7 +174,7 @@ async def bind_material_to_category(
     "/{category_id}/materials/{material_id}",
     response_model=None,
     status_code=204,
-    dependencies=[Depends(require_permissions("category.material.remove"))],
+    dependencies=[Depends(require_permissions("material.category.material.remove"))],
     summary="Отвязать материал от категории",
     responses={
         404: CATEGORY_OBJECT_404,
@@ -213,7 +213,7 @@ async def unbind_material_from_category(
     "/{category_id}/subcategories/{subcategory_id}",
     response_model=None,
     status_code=204,
-    dependencies=[Depends(require_permissions("category.subcategory.assign"))],
+    dependencies=[Depends(require_permissions("material.category.subcategory.assign"))],
     summary="Добавить подкатегорию (связь категория–подкатегория)",
     responses={
         400: CATEGORY_SUBCATEGORY_BAD_REQUEST,
@@ -257,7 +257,7 @@ async def add_subcategory_to_category(
     "/{category_id}/subcategories/{subcategory_id}",
     response_model=None,
     status_code=204,
-    dependencies=[Depends(require_permissions("category.subcategory.remove"))],
+    dependencies=[Depends(require_permissions("material.category.subcategory.remove"))],
     summary="Удалить связь категория–подкатегория",
     responses={
         404: CATEGORY_SUBCATEGORY_404,

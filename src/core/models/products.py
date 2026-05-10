@@ -1,29 +1,26 @@
 from datetime import datetime
 from decimal import Decimal
-from enum import StrEnum
 
-from sqlalchemy import BigInteger, Enum, ForeignKey, func, Identity, Numeric, String, Text, TEXT, TIMESTAMP
+from sqlalchemy import BigInteger, Boolean, ForeignKey, func, Identity, Numeric, Text, TEXT, TIMESTAMP, true
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base
-from .employees import Employee
-from .objects import Object
+from .materials import Material
 from .resources import Resource
-from .users import User
-from .warehouses import Warehouse
 
 
 class Product(Base):
     __tablename__ = "products"
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
-    sku: Mapped[str | None] = mapped_column(String(50), unique=True)
 
     name: Mapped[str] = mapped_column(Text)
     description: Mapped[str] = mapped_column(Text)
 
-    output_object_id: Mapped[int] = mapped_column(ForeignKey(Object.id))
+    output_material_id: Mapped[int] = mapped_column(ForeignKey(Material.id))
     output_quantity: Mapped[Decimal] = mapped_column(Numeric(15, 3), default=1)
+
+    is_active: Mapped[bool] = mapped_column(Boolean, server_default=true())
 
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
 
@@ -34,7 +31,7 @@ class ProductMaterial(Base):
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
     product_id: Mapped[int] = mapped_column(ForeignKey(Product.id, ondelete="CASCADE"))
 
-    object_id: Mapped[int] = mapped_column(ForeignKey(Object.id))
+    material_id: Mapped[int] = mapped_column(ForeignKey(Material.id))
     quantity: Mapped[Decimal] = mapped_column(Numeric(15, 3))
 
 
@@ -48,59 +45,24 @@ class ProductResource(Base):
     quantity: Mapped[Decimal] = mapped_column(Numeric(15, 3))
 
 
-class ProductionOrderStatus(StrEnum):
-    PLAN = "PLAN"
-    IN_PROGRESS = "IN_PROGRESS"
-    COMPLETED = "COMPLETED"
-    CLOSED = "CLOSED"
-    CANCELLED = "CANCELLED"
-
-
-class ProductionOrder(Base):
-    __tablename__ = "production_orders"
+class ProductCategory(Base):
+    __tablename__ = "product_categories"
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
-
-    performed_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True))
-    warehouse_id: Mapped[int] = mapped_column(ForeignKey(Warehouse.id))
-    comment: Mapped[str] = mapped_column(TEXT)
-
-    status: Mapped[ProductionOrderStatus] = mapped_column(Enum(ProductionOrderStatus), default=ProductionOrderStatus.PLAN)
-
-    created_by_id: Mapped[int] = mapped_column(ForeignKey(User.id))
-
+    name: Mapped[str] = mapped_column(TEXT, unique=True)
+    description: Mapped[str] = mapped_column(TEXT)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
-    completed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
-    closed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
-    cancelled_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
 
 
-class ProductionOrderProduct(Base):
-    __tablename__ = "production_order_products"
+class ProductCategoryProduct(Base):
+    __tablename__ = "product_category_products"
 
-    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
-    order_id: Mapped[int] = mapped_column(ForeignKey(ProductionOrder.id, ondelete="CASCADE"))
-
-    product_id: Mapped[int] = mapped_column(ForeignKey(Product.id))
-    quantity: Mapped[Decimal] = mapped_column(Numeric(15, 3))
+    category_id: Mapped[int] = mapped_column(ForeignKey(ProductCategory.id), primary_key=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey(Product.id), primary_key=True)
 
 
-class ProductionOrderResource(Base):
-    __tablename__ = "production_order_resources"
+class ProductCategorySubcategory(Base):
+    __tablename__ = "product_category_subcategories"
 
-    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
-    order_id: Mapped[int] = mapped_column(ForeignKey(ProductionOrder.id, ondelete="CASCADE"))
-
-    resource_id: Mapped[int] = mapped_column(ForeignKey(Resource.id))
-    quantity: Mapped[Decimal] = mapped_column(Numeric(15, 3))
-
-
-class ProductionOrderWorker(Base):
-    __tablename__ = "production_order_workers"
-
-    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
-    order_id: Mapped[int] = mapped_column(ForeignKey(ProductionOrder.id, ondelete="CASCADE"))
-
-    employee_id: Mapped[int] = mapped_column(ForeignKey(Employee.id))
-    hours_worked: Mapped[Decimal] = mapped_column(Numeric(10, 2))
-    hourly_rate: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    category_id: Mapped[int] = mapped_column(ForeignKey(ProductCategory.id), primary_key=True)
+    subcategory_id: Mapped[int] = mapped_column(ForeignKey(ProductCategory.id, ondelete="CASCADE"), primary_key=True)

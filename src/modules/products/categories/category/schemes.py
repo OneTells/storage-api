@@ -10,32 +10,32 @@ DescriptionField = Annotated[str, Field(min_length=1, max_length=1000, descripti
 CreatedAtField = Annotated[AwareDatetime, Field(description="Время создания категории")]
 
 
-class CategoryCreate(BaseModel):
+class ProductCategoryCreate(BaseModel):
     name: NameField
     description: DescriptionField
 
 
-class CategoryCreateResponse(BaseModel):
+class ProductCategoryCreateResponse(BaseModel):
     id: IdField
 
 
-class CategoryRead(BaseModel):
+class ProductCategoryRead(BaseModel):
     id: IdField
     name: NameField
     description: DescriptionField
     created_at: CreatedAtField
 
 
-class CategoryUpdate(BaseModel):
+class ProductCategoryUpdate(BaseModel):
     name: NameField
     description: DescriptionField
 
 
-class CategoriesReadResponse(BaseModel):
-    categories: list[CategoryRead]
+class ProductCategoriesReadResponse(BaseModel):
+    product_categories: list[ProductCategoryRead]
     pagination: Pagination
 
 
-class SubcategoriesReadResponse(BaseModel):
-    subcategories: list[CategoryRead]
+class ProductSubcategoriesReadResponse(BaseModel):
+    subcategories: list[ProductCategoryRead]
     pagination: Pagination

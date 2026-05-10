@@ -15,7 +15,7 @@ router = APIRouter(prefix="/catalog")
 @router.get(
     "/",
     response_model=CatalogReadResponse,
-    dependencies=[Depends(require_permissions("catalog.read"))],
+    dependencies=[Depends(require_permissions("materials.catalog.read"))],
     summary="Каталог: категории, позиции и связи",
     responses={
         404: MATERIALS_CATALOG_READ_NOT_FOUND,
