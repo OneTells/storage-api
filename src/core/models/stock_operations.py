@@ -6,7 +6,7 @@ from sqlalchemy import BigInteger, Enum, ForeignKey, func, Identity, Numeric, St
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.models.counterparties import Counterparty
-from core.models.objects import Object
+from core.models.materials import Material
 from core.models.users import User
 from core.models.warehouses import Warehouse
 from . import ProductionOrder
@@ -55,7 +55,7 @@ class ReceiptItem(Base):
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
     operation_id: Mapped[int] = mapped_column(ForeignKey(Receipt.id, ondelete="CASCADE"))
 
-    object_id: Mapped[int] = mapped_column(ForeignKey(Object.id))
+    material_id: Mapped[int] = mapped_column(ForeignKey(Material.id))
     quantity: Mapped[Decimal] = mapped_column(Numeric(15, 3))
     unit_price: Mapped[Decimal] = mapped_column(Numeric(15, 2))
 
@@ -87,7 +87,7 @@ class ProductionOutputItem(Base):
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
     operation_id: Mapped[int] = mapped_column(ForeignKey(ProductionOutput.id, ondelete="CASCADE"))
 
-    object_id: Mapped[int] = mapped_column(ForeignKey(Object.id))
+    material_id: Mapped[int] = mapped_column(ForeignKey(Material.id))
     quantity: Mapped[Decimal] = mapped_column(Numeric(15, 3))
     unit_price: Mapped[Decimal] = mapped_column(Numeric(15, 2))
 
@@ -119,7 +119,7 @@ class WriteOffToProductionItem(Base):
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
     operation_id: Mapped[int] = mapped_column(ForeignKey(WriteOffToProduction.id, ondelete="CASCADE"))
 
-    object_id: Mapped[int] = mapped_column(ForeignKey(Object.id))
+    material_id: Mapped[int] = mapped_column(ForeignKey(Material.id))
     quantity: Mapped[Decimal] = mapped_column(Numeric(15, 3))
     unit_price: Mapped[Decimal] = mapped_column(Numeric(15, 2))
 
@@ -152,7 +152,7 @@ class ShipmentItem(Base):
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
     operation_id: Mapped[int] = mapped_column(ForeignKey(Shipment.id, ondelete="CASCADE"))
 
-    object_id: Mapped[int] = mapped_column(ForeignKey(Object.id))
+    material_id: Mapped[int] = mapped_column(ForeignKey(Material.id))
     quantity: Mapped[Decimal] = mapped_column(Numeric(15, 3))
 
     batch_id: Mapped[int | None] = mapped_column(ForeignKey(Batch.id))
@@ -183,7 +183,7 @@ class InventoryAdjustmentItem(Base):
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
     operation_id: Mapped[int] = mapped_column(ForeignKey(InventoryAdjustment.id, ondelete="CASCADE"))
 
-    object_id: Mapped[int] = mapped_column(ForeignKey(Object.id))
+    material_id: Mapped[int] = mapped_column(ForeignKey(Material.id))
 
     expected_qty: Mapped[Decimal] = mapped_column(Numeric(15, 3))  # учётное количество
     actual_qty: Mapped[Decimal] = mapped_column(Numeric(15, 3))  # фактическое
@@ -224,7 +224,7 @@ class TransferItem(Base):
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
     operation_id: Mapped[int] = mapped_column(ForeignKey(Transfer.id, ondelete="CASCADE"))
 
-    object_id: Mapped[int] = mapped_column(ForeignKey(Object.id))
+    material_id: Mapped[int] = mapped_column(ForeignKey(Material.id))
     quantity: Mapped[Decimal] = mapped_column(Numeric(15, 3))
 
     old_batch_id: Mapped[int | None] = mapped_column(ForeignKey(Batch.id))
@@ -280,7 +280,7 @@ class WriteOffItem(Base):
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
     operation_id: Mapped[int] = mapped_column(ForeignKey(WriteOff.id, ondelete="CASCADE"))
 
-    object_id: Mapped[int] = mapped_column(ForeignKey(Object.id))
+    material_id: Mapped[int] = mapped_column(ForeignKey(Material.id))
     quantity: Mapped[Decimal] = mapped_column(Numeric(15, 3))
     reason: Mapped[str] = mapped_column(Text)
 

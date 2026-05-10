@@ -5,7 +5,7 @@ from sqlalchemy import BigInteger, CheckConstraint, ForeignKey, func, Identity, 
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base
-from .objects import Object
+from .materials import Material
 from .warehouses import Warehouse
 
 
@@ -13,7 +13,7 @@ class Batch(Base):
     __tablename__ = "batches"
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
-    object_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(Object.id))
+    material_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(Material.id))
     warehouse_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(Warehouse.id))
     quantity: Mapped[Decimal] = mapped_column(Numeric(15, 3))  # начальное количество
     remaining: Mapped[Decimal] = mapped_column(Numeric(15, 3))  # текущий остаток

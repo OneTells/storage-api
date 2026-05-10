@@ -6,7 +6,7 @@ from sqlalchemy import BigInteger, Enum, ForeignKey, func, Identity, Numeric, TE
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base
-from .objects import Unit
+from .units import Unit
 
 
 class ResourceType(StrEnum):
