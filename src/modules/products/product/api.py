@@ -1,3 +1,4 @@
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Annotated
 
 from everbase import Connection
@@ -9,17 +10,51 @@ from core.methods import get_connection, require_permissions
 from modules.products.product import repositories
 from modules.products.product.responses import (
     MATERIAL_OR_RESOURCE_NOT_FOUND,
+    PRODUCT_MATERIAL_SHORTAGE_NOT_FOUND,
     PRODUCT_NOT_FOUND,
     PRODUCT_UPDATE_NOT_FOUND,
 )
 from modules.products.product.schemes import (
     ProductCreate,
     ProductCreateResponse,
+    ProductMaterialShortageLineResponse,
+    ProductMaterialShortageRequest,
+    ProductMaterialShortageResponse,
     ProductRead,
     ProductUpdate,
 )
 
 router = APIRouter()
+
+
+async def _validate_material_shortage_references(
+    connection: Connection,
+    payload: ProductMaterialShortageRequest,
+) -> None:
+    requested_ids = {x.product_id for x in payload.lines}
+    found_products = await repositories.fetch_existing_product_ids(connection, list(requested_ids))
+    missing_products = sorted(requested_ids - found_products)
+    if missing_products:
+        raise APIException(
+            status_code=404,
+            code="PRODUCT_NOT_FOUND",
+            message="Продукт не найден",
+            details={"product_ids": missing_products},
+        )
+
+    wh = payload.warehouse_ids
+    if not wh:
+        return
+
+    found_wh = await repositories.fetch_existing_warehouse_ids(connection, wh)
+    missing_wh = sorted(set(wh) - found_wh)
+    if missing_wh:
+        raise APIException(
+            status_code=404,
+            code="WAREHOUSES_NOT_FOUND",
+            message="Склад не найден",
+            details={"warehouse_ids": missing_wh},
+        )
 
 
 async def _validate_product_references(connection: Connection, payload: ProductCreate | ProductUpdate) -> None:
@@ -76,6 +111,35 @@ async def create_product(
         )
 
     return ProductCreateResponse(id=product_id)
+
+
+@router.post(
+    "/material-shortage",
+    response_model=ProductMaterialShortageResponse,
+    dependencies=[Depends(require_permissions("product.read"))],
+    summary="Проверить нехватку материалов для выпуска",
+    responses={
+        404: PRODUCT_MATERIAL_SHORTAGE_NOT_FOUND,
+    },
+)
+async def product_material_shortage(
+    connection: Annotated[Connection, Depends(get_connection)],
+    payload: Annotated[ProductMaterialShortageRequest, Body()],
+):
+    await _validate_material_shortage_references(connection, payload)
+
+    warehouse_filter = payload.warehouse_ids if payload.warehouse_ids else None
+    lines = [(x.product_id, x.quantity) for x in payload.lines]
+    rows = await repositories.product_material_shortage_lines(connection, lines, warehouse_filter)
+
+    q = Decimal("0.001")
+    shortages: list[ProductMaterialShortageLineResponse] = []
+    for pid, s in rows:
+        sq = s.quantize(q, rounding=ROUND_HALF_UP)
+        if sq > 0:
+            shortages.append(ProductMaterialShortageLineResponse(product_id=pid, shortage_quantity=sq))
+
+    return ProductMaterialShortageResponse(shortages=shortages)
 
 
 @router.get(

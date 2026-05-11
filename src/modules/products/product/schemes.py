@@ -98,3 +98,42 @@ class ProductUpdate(BaseModel):
     output_material: ProductOutputPayload
     input_materials: list[ProductMaterialPayload]
     input_resources: list[ProductResourcePayload]
+
+
+class ProductMaterialShortageLineRequest(BaseModel):
+    product_id: IdField
+    quantity: OutputQuantityField
+
+
+class ProductMaterialShortageRequest(BaseModel):
+    lines: Annotated[
+        list[ProductMaterialShortageLineRequest],
+        Field(min_length=1, description="Пары «продукт — требуемый выпуск»"),
+    ]
+    warehouse_ids: Annotated[
+        list[Annotated[int, Field(ge=1, description="Идентификатор склада")]] | None,
+        Field(
+            default=None,
+            description="Ограничить поиск остатков материалов этими складами; не задано — по всем складам",
+        ),
+    ] = None
+
+
+class ProductMaterialShortageLineResponse(BaseModel):
+    product_id: IdField
+    shortage_quantity: Annotated[
+        Decimal,
+        Field(
+            gt=0,
+            max_digits=15,
+            decimal_places=3,
+            description="Сколько единиц выпуска продукта не обеспечено материалами на выбранных складах",
+        ),
+    ]
+
+
+class ProductMaterialShortageResponse(BaseModel):
+    shortages: Annotated[
+        list[ProductMaterialShortageLineResponse],
+        Field(description="Позиции, где остатков входных материалов не хватает для запрошенного выпуска"),
+    ]

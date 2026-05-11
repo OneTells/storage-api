@@ -1,10 +1,23 @@
+from decimal import Decimal
+from typing import NamedTuple
+
 from asyncpg import Record
 from everbase import Connection
 from sqlalchemy import Delete, func, Select, Update
-from sqlalchemy.orm import aliased
 from sqlalchemy.dialects.postgresql import Insert
+from sqlalchemy.orm import aliased
 
-from core.models import Material, Product, ProductCategoryProduct, ProductMaterial, ProductResource, Resource, Unit
+from core.models import (
+    Batch,
+    Material,
+    Product,
+    ProductCategoryProduct,
+    ProductMaterial,
+    ProductResource,
+    Resource,
+    Unit,
+    Warehouse,
+)
 from modules.products.product.schemes import ProductCreate, ProductUpdate
 
 
@@ -237,3 +250,138 @@ async def fetch_existing_resource_ids(connection: Connection, resource_ids: list
     query = Select(Resource.id).where(Resource.id.in_(resource_ids))
     rows = await connection.fetch(query)
     return {row[0] for row in rows}
+
+
+async def fetch_existing_product_ids(connection: Connection, product_ids: list[int]) -> set[int]:
+    if not product_ids:
+        return set()
+    query = Select(Product.id).where(Product.id.in_(product_ids))
+    rows = await connection.fetch(query)
+    return {row[0] for row in rows}
+
+
+async def fetch_existing_warehouse_ids(connection: Connection, warehouse_ids: list[int]) -> set[int]:
+    if not warehouse_ids:
+        return set()
+    query = Select(Warehouse.id).where(Warehouse.id.in_(warehouse_ids))
+    rows = await connection.fetch(query)
+    return {row[0] for row in rows}
+
+
+class ProductBomForShortage(NamedTuple):
+    output_quantity: Decimal
+    materials: list[tuple[int, Decimal]]
+
+
+async def fetch_products_bom_for_material_shortage(
+    connection: Connection,
+    product_ids: list[int],
+) -> dict[int, ProductBomForShortage]:
+    """Возвращает нормативы (выход и входные материалы) по продуктам."""
+    if not product_ids:
+        return {}
+
+    query = (
+        Select(Product.id, Product.output_quantity, ProductMaterial.material_id, ProductMaterial.quantity)
+        .select_from(Product)
+        .outerjoin(ProductMaterial, ProductMaterial.product_id == Product.id)
+        .where(Product.id.in_(product_ids))
+    )
+    rows = await connection.fetch(query)
+
+    grouped: dict[int, list[tuple[int, Decimal]]] = {}
+    out_qty: dict[int, Decimal] = {}
+    for row in rows:
+        pid = int(row["id"])
+        out_qty[pid] = row["output_quantity"]
+        if row["material_id"] is not None:
+            grouped.setdefault(pid, []).append((int(row["material_id"]), row["quantity"]))
+
+    return {
+        pid: ProductBomForShortage(output_quantity=out_qty[pid], materials=grouped.get(pid, []))
+        for pid in out_qty
+    }
+
+
+async def fetch_material_stock_remaining_totals(
+    connection: Connection,
+    material_ids: list[int],
+    warehouse_ids: list[int] | None,
+) -> dict[int, Decimal]:
+    if not material_ids:
+        return {}
+
+    query = (
+        Select(Batch.material_id, func.coalesce(func.sum(Batch.remaining), 0))
+        .where(Batch.material_id.in_(material_ids))
+        .group_by(Batch.material_id)
+    )
+    if warehouse_ids:
+        query = query.where(Batch.warehouse_id.in_(warehouse_ids))
+
+    rows = await connection.fetch(query)
+    return {int(row[0]): row[1] for row in rows}
+
+
+def _max_producible_output_units(
+    bom: ProductBomForShortage,
+    stock: dict[int, Decimal],
+) -> Decimal:
+    """Максимум единиц выпуска продукта, ограниченный остатками входных материалов."""
+    if not bom.materials:
+        return Decimal("Infinity")
+
+    min_units: Decimal | None = None
+    out_q = bom.output_quantity
+    for material_id, norm_qty in bom.materials:
+        if norm_qty <= 0:
+            continue
+        available = stock.get(material_id, Decimal(0))
+        from_material = available * out_q / norm_qty
+        min_units = from_material if min_units is None else min(min_units, from_material)
+
+    if min_units is None:
+        return Decimal("Infinity")
+    return min_units
+
+
+async def product_material_shortage_lines(
+    connection: Connection,
+    lines: list[tuple[int, Decimal]],
+    warehouse_ids: list[int] | None,
+) -> list[tuple[int, Decimal]]:
+    """
+    Для каждой строки запроса — пара (product_id, нехватка в единицах выпуска).
+    Строки с нулевой нехваткой отбрасываются.
+    """
+    if not lines:
+        return []
+
+    product_ids = [p for p, _ in lines]
+    boms = await fetch_products_bom_for_material_shortage(connection, product_ids)
+
+    material_ids: set[int] = set()
+    for bom in boms.values():
+        material_ids.update(mid for mid, _ in bom.materials)
+
+    stock = await fetch_material_stock_remaining_totals(
+        connection,
+        list(material_ids),
+        warehouse_ids,
+    )
+
+    out: list[tuple[int, Decimal]] = []
+    for product_id, requested in lines:
+        bom = boms.get(product_id)
+        if bom is None:
+            continue
+
+        max_out = _max_producible_output_units(bom, stock)
+        if max_out == Decimal("Infinity") or max_out >= requested:
+            continue
+
+        shortage = requested - max_out
+        if shortage > 0:
+            out.append((product_id, shortage))
+
+    return out

@@ -75,3 +75,30 @@ PRODUCT_NOT_FOUND = {
         }
     }
 }
+
+PRODUCT_MATERIAL_SHORTAGE_NOT_FOUND = {
+    "description": "Продукт или склад не найден",
+    "model": ErrorResponse,
+    "content": {
+        "application/json": {
+            "examples": {
+                "product_not_found": {
+                    "summary": "Продукт не найден",
+                    "value": {
+                        "code": "PRODUCT_NOT_FOUND",
+                        "message": "Продукт не найден",
+                        "details": {"product_ids": [1, 2]},
+                    },
+                },
+                "warehouses_not_found": {
+                    "summary": "Склад не найден",
+                    "value": {
+                        "code": "WAREHOUSES_NOT_FOUND",
+                        "message": "Склад не найден",
+                        "details": {"warehouse_ids": [99]},
+                    },
+                },
+            },
+        },
+    },
+}
