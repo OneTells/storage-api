@@ -3,10 +3,10 @@ from typing import Any
 
 from asyncpg import Record
 from everbase import Connection
-from sqlalchemy import Delete, Select, Update, func
-from sqlalchemy.dialects.postgresql import Insert
+from sqlalchemy import Delete, literal_column, Select, Update, func
+from sqlalchemy.dialects.postgresql import Insert, aggregate_order_by
 
-from core.models import OperationStatus, StockOperation, StockOperationType, Transfer, TransferItem
+from core.models import OperationStatus, StockOperation, StockOperationType, Transfer, TransferItem, User
 
 from modules.operations.transfer.schemes import TransferCreate, TransferUpdate
 
@@ -16,6 +16,7 @@ async def count_transfers(
     user_id: int | None,
     created_from: datetime | None,
     created_to: datetime | None,
+    status: OperationStatus | None,
 ) -> int:
     stmt = (
         Select(func.count())
@@ -33,6 +34,9 @@ async def count_transfers(
     if created_to is not None:
         stmt = stmt.where(StockOperation.created_at <= created_to)
 
+    if status is not None:
+        stmt = stmt.where(Transfer.status == status)
+
     return await connection.fetch_val(stmt, model=lambda x: int(x))
 
 
@@ -43,7 +47,29 @@ async def fetch_transfers(
     user_id: int | None,
     created_from: datetime | None,
     created_to: datetime | None,
+    status: OperationStatus | None,
 ) -> list[Record]:
+    tri = (
+        Select(
+            TransferItem.operation_id,
+            func.json_agg(
+                aggregate_order_by(
+                    func.json_build_object(
+                        "material_id",
+                        TransferItem.material_id,
+                        "quantity",
+                        TransferItem.quantity,
+                        "old_batch_id",
+                        TransferItem.old_batch_id,
+                        "new_batch_id",
+                        TransferItem.new_batch_id,
+                    ),
+                    TransferItem.id.asc(),
+                ),
+            ).label("items_json"),
+        )
+        .group_by(TransferItem.operation_id)
+    ).subquery("transfer_items_agg")
     stmt = (
         Select(
             StockOperation.id,
@@ -53,12 +79,16 @@ async def fetch_transfers(
             Transfer.from_warehouse_id,
             Transfer.to_warehouse_id,
             StockOperation.created_by_id,
+            User.name.label("created_by_user_name"),
             StockOperation.created_at,
             StockOperation.completed_at,
             StockOperation.cancelled_at,
+            func.coalesce(tri.c.items_json, literal_column("'[]'::json")).label("items"),
         )
         .select_from(Transfer)
         .join(StockOperation, StockOperation.id == Transfer.operation_id)
+        .join(User, User.id == StockOperation.created_by_id)
+        .outerjoin(tri, tri.c.operation_id == StockOperation.id)
         .where(StockOperation.type == StockOperationType.TRANSFER)
         .order_by(StockOperation.id.desc())
         .offset((page - 1) * limit)
@@ -74,10 +104,34 @@ async def fetch_transfers(
     if created_to is not None:
         stmt = stmt.where(StockOperation.created_at <= created_to)
 
+    if status is not None:
+        stmt = stmt.where(Transfer.status == status)
+
     return await connection.fetch(stmt)
 
 
 async def get_transfer(connection: Connection, operation_id: int) -> Record | None:
+    tri = (
+        Select(
+            TransferItem.operation_id,
+            func.json_agg(
+                aggregate_order_by(
+                    func.json_build_object(
+                        "material_id",
+                        TransferItem.material_id,
+                        "quantity",
+                        TransferItem.quantity,
+                        "old_batch_id",
+                        TransferItem.old_batch_id,
+                        "new_batch_id",
+                        TransferItem.new_batch_id,
+                    ),
+                    TransferItem.id.asc(),
+                ),
+            ).label("items_json"),
+        )
+        .group_by(TransferItem.operation_id)
+    ).subquery("transfer_items_agg")
     stmt = (
         Select(
             StockOperation.id,
@@ -87,12 +141,16 @@ async def get_transfer(connection: Connection, operation_id: int) -> Record | No
             Transfer.from_warehouse_id,
             Transfer.to_warehouse_id,
             StockOperation.created_by_id,
+            User.name.label("created_by_user_name"),
             StockOperation.created_at,
             StockOperation.completed_at,
             StockOperation.cancelled_at,
+            func.coalesce(tri.c.items_json, literal_column("'[]'::json")).label("items"),
         )
         .select_from(Transfer)
         .join(StockOperation, StockOperation.id == Transfer.operation_id)
+        .join(User, User.id == StockOperation.created_by_id)
+        .outerjoin(tri, tri.c.operation_id == StockOperation.id)
         .where(StockOperation.type == StockOperationType.TRANSFER, StockOperation.id == operation_id)
         .order_by(StockOperation.id.desc())
     )

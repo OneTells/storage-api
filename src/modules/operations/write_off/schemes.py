@@ -5,6 +5,7 @@ from pydantic import AwareDatetime, BaseModel, Field
 
 from core.models import OperationStatus
 from core.schemes import Pagination
+from modules.operations.schemes import OperationUserRef
 
 
 class WriteOffItemCreate(BaseModel):
@@ -30,6 +31,15 @@ class WriteOffUpdate(BaseModel):
     items: list[WriteOffItemCreate] | None = None
 
 
+class WriteOffItemRead(BaseModel):
+    """Строка списания в ответе (как при создании, плюс партия при наличии)."""
+
+    material_id: Annotated[int, Field(ge=1, description="Идентификатор материала")]
+    quantity: Annotated[Decimal, Field(gt=0, decimal_places=3, description="Количество")]
+    reason: Annotated[str, Field(min_length=1, description="Причина списания по строке")]
+    batch_id: Annotated[int | None, Field(description="Идентификатор партии списания")] = None
+
+
 class WriteOffRead(BaseModel):
     id: Annotated[int, Field(ge=1, description="Идентификатор операции")]
     name: Annotated[str, Field(description="Наименование операции")]
@@ -37,10 +47,14 @@ class WriteOffRead(BaseModel):
     status: Annotated[OperationStatus, Field(description="Статус списания")]
     warehouse_id: Annotated[int, Field(ge=1)]
     reason: Annotated[str, Field(description="Общая причина списания")]
-    created_by_id: Annotated[int, Field(ge=1)]
+    created_by: Annotated[OperationUserRef, Field(description="Пользователь, создавший операцию")]
     created_at: AwareDatetime
     completed_at: AwareDatetime | None
     cancelled_at: AwareDatetime | None
+    items: Annotated[
+        list[WriteOffItemRead],
+        Field(default_factory=list, description="Строки списания"),
+    ]
 
 
 class WriteOffsListResponse(BaseModel):

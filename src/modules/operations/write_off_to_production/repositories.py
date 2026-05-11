@@ -3,10 +3,17 @@ from typing import Any
 
 from asyncpg import Record
 from everbase import Connection
-from sqlalchemy import Delete, Select, Update, func
-from sqlalchemy.dialects.postgresql import Insert
+from sqlalchemy import Delete, literal_column, Select, Update, func
+from sqlalchemy.dialects.postgresql import Insert, aggregate_order_by
 
-from core.models import OperationStatus, StockOperation, StockOperationType, WriteOffToProduction, WriteOffToProductionItem
+from core.models import (
+    OperationStatus,
+    StockOperation,
+    StockOperationType,
+    User,
+    WriteOffToProduction,
+    WriteOffToProductionItem,
+)
 
 from modules.operations.write_off_to_production.schemes import WriteOffToProductionCreate, WriteOffToProductionUpdate
 
@@ -16,6 +23,7 @@ async def count_write_offs_to_production(
     user_id: int | None,
     created_from: datetime | None,
     created_to: datetime | None,
+    status: OperationStatus | None,
 ) -> int:
     stmt = (
         Select(func.count())
@@ -33,6 +41,9 @@ async def count_write_offs_to_production(
     if created_to is not None:
         stmt = stmt.where(StockOperation.created_at <= created_to)
 
+    if status is not None:
+        stmt = stmt.where(WriteOffToProduction.status == status)
+
     return await connection.fetch_val(stmt, model=lambda x: int(x))
 
 
@@ -43,7 +54,29 @@ async def fetch_write_offs_to_production(
     user_id: int | None,
     created_from: datetime | None,
     created_to: datetime | None,
+    status: OperationStatus | None,
 ) -> list[Record]:
+    wti = (
+        Select(
+            WriteOffToProductionItem.operation_id,
+            func.json_agg(
+                aggregate_order_by(
+                    func.json_build_object(
+                        "material_id",
+                        WriteOffToProductionItem.material_id,
+                        "quantity",
+                        WriteOffToProductionItem.quantity,
+                        "unit_price",
+                        WriteOffToProductionItem.unit_price,
+                        "batch_id",
+                        WriteOffToProductionItem.batch_id,
+                    ),
+                    WriteOffToProductionItem.id.asc(),
+                ),
+            ).label("items_json"),
+        )
+        .group_by(WriteOffToProductionItem.operation_id)
+    ).subquery("write_off_tp_items_agg")
     stmt = (
         Select(
             StockOperation.id,
@@ -53,12 +86,16 @@ async def fetch_write_offs_to_production(
             WriteOffToProduction.warehouse_id,
             WriteOffToProduction.production_order_id.label("production_order_reference"),
             StockOperation.created_by_id,
+            User.name.label("created_by_user_name"),
             StockOperation.created_at,
             StockOperation.completed_at,
             StockOperation.cancelled_at,
+            func.coalesce(wti.c.items_json, literal_column("'[]'::json")).label("items"),
         )
         .select_from(WriteOffToProduction)
         .join(StockOperation, StockOperation.id == WriteOffToProduction.operation_id)
+        .join(User, User.id == StockOperation.created_by_id)
+        .outerjoin(wti, wti.c.operation_id == StockOperation.id)
         .where(StockOperation.type == StockOperationType.WRITE_OFF_TO_PRODUCTION)
         .order_by(StockOperation.id.desc())
         .offset((page - 1) * limit)
@@ -74,10 +111,34 @@ async def fetch_write_offs_to_production(
     if created_to is not None:
         stmt = stmt.where(StockOperation.created_at <= created_to)
 
+    if status is not None:
+        stmt = stmt.where(WriteOffToProduction.status == status)
+
     return await connection.fetch(stmt)
 
 
 async def get_write_off_to_production(connection: Connection, operation_id: int) -> Record | None:
+    wti = (
+        Select(
+            WriteOffToProductionItem.operation_id,
+            func.json_agg(
+                aggregate_order_by(
+                    func.json_build_object(
+                        "material_id",
+                        WriteOffToProductionItem.material_id,
+                        "quantity",
+                        WriteOffToProductionItem.quantity,
+                        "unit_price",
+                        WriteOffToProductionItem.unit_price,
+                        "batch_id",
+                        WriteOffToProductionItem.batch_id,
+                    ),
+                    WriteOffToProductionItem.id.asc(),
+                ),
+            ).label("items_json"),
+        )
+        .group_by(WriteOffToProductionItem.operation_id)
+    ).subquery("write_off_tp_items_agg")
     stmt = (
         Select(
             StockOperation.id,
@@ -87,12 +148,16 @@ async def get_write_off_to_production(connection: Connection, operation_id: int)
             WriteOffToProduction.warehouse_id,
             WriteOffToProduction.production_order_id.label("production_order_reference"),
             StockOperation.created_by_id,
+            User.name.label("created_by_user_name"),
             StockOperation.created_at,
             StockOperation.completed_at,
             StockOperation.cancelled_at,
+            func.coalesce(wti.c.items_json, literal_column("'[]'::json")).label("items"),
         )
         .select_from(WriteOffToProduction)
         .join(StockOperation, StockOperation.id == WriteOffToProduction.operation_id)
+        .join(User, User.id == StockOperation.created_by_id)
+        .outerjoin(wti, wti.c.operation_id == StockOperation.id)
         .where(StockOperation.type == StockOperationType.WRITE_OFF_TO_PRODUCTION, StockOperation.id == operation_id)
         .order_by(StockOperation.id.desc())
     )

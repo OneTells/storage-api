@@ -1,21 +1,40 @@
 from datetime import datetime
 from typing import Annotated
 
+from asyncpg import Record
 from everbase import Connection
 from fastapi import APIRouter, Body, Depends, Path, Query
+from orjson import loads
 
 from core.exceptions import APIException
 from core.methods import get_connection, get_current_user, require_permissions
-from core.models import CounterpartyRoleType
+from core.models import CounterpartyRoleType, OperationStatus
 from core.schemes import Pagination, UserModel
+from modules.operations.repositories import counterparty_role_exists, material_exists, warehouse_exists
 from modules.operations.responses import OPERATION_HEADER_NOT_FOUND
-from modules.operations.shipment import repositories
 from modules.operations.schemes import OperationCreateResponse
+from modules.operations.shipment import repositories
 from modules.operations.shipment.responses import SHIPMENT_404
 from modules.operations.shipment.schemes import ShipmentCreate, ShipmentRead, ShipmentsListResponse, ShipmentUpdate
-from modules.operations.repositories import counterparty_role_exists, material_exists, warehouse_exists
 
 router = APIRouter()
+
+
+def _shipment_read_from_row(row: Record) -> ShipmentRead:
+    d = dict(row)
+    d["customer"] = {"id": d.pop("counterparty_id"), "name": d.pop("customer_name")}
+    d["created_by"] = {"id": d.pop("created_by_id"), "name": d.pop("created_by_user_name")}
+    _items_raw = d.pop("items")
+    if _items_raw is None:
+        d["items"] = []
+    elif isinstance(_items_raw, list):
+        d["items"] = _items_raw
+    elif isinstance(_items_raw, str):
+        _parsed = loads(_items_raw)
+        d["items"] = _parsed if isinstance(_parsed, list) else []
+    else:
+        d["items"] = list(_items_raw)
+    return ShipmentRead.model_validate(d)
 
 
 @router.get(
@@ -31,12 +50,16 @@ async def fetch_shipments(
     user_id: Annotated[int | None, Query(ge=1, description="Фильтр по пользователю")] = None,
     created_from: Annotated[datetime | None, Query(description="Начало периода создания операции")] = None,
     created_to: Annotated[datetime | None, Query(description="Конец периода создания операции")] = None,
+    status: Annotated[
+        OperationStatus | None,
+        Query(description="Фильтр по статусу отгрузки"),
+    ] = None,
 ):
-    rows = await repositories.fetch_shipments(connection, page, limit, user_id, created_from, created_to)
-    total = await repositories.count_shipments(connection, user_id, created_from, created_to)
+    rows = await repositories.fetch_shipments(connection, page, limit, user_id, created_from, created_to, status)
+    total = await repositories.count_shipments(connection, user_id, created_from, created_to, status)
 
     return ShipmentsListResponse(
-        items=[ShipmentRead.model_validate(dict(r)) for r in rows],
+        items=[_shipment_read_from_row(r) for r in rows],
         pagination=Pagination(
             page=page,
             limit=limit,
@@ -64,7 +87,7 @@ async def get_shipment(
     if row is None:
         raise APIException(status_code=404, code="OPERATION_NOT_FOUND", message="Операция не найдена")
 
-    return ShipmentRead.model_validate(dict(row))
+    return _shipment_read_from_row(row)
 
 
 @router.post(

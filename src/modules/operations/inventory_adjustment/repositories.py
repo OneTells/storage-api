@@ -3,8 +3,8 @@ from typing import Any
 
 from asyncpg import Record
 from everbase import Connection
-from sqlalchemy import Delete, func, Select, Update
-from sqlalchemy.dialects.postgresql import Insert
+from sqlalchemy import Delete, func, literal_column, Select, Update
+from sqlalchemy.dialects.postgresql import Insert, aggregate_order_by
 
 from core.models import (
     InventoryAdjustment,
@@ -13,6 +13,7 @@ from core.models import (
     OperationStatus,
     StockOperation,
     StockOperationType,
+    User,
 )
 from modules.operations.inventory_adjustment.schemes import InventoryAdjustmentCreate, InventoryAdjustmentUpdate
 from modules.operations.repositories import allocate_inventory_adjustment_details_fifo
@@ -23,6 +24,7 @@ async def count_inventory_adjustments(
     user_id: int | None,
     created_from: datetime | None,
     created_to: datetime | None,
+    status: OperationStatus | None,
 ) -> int:
     stmt = (
         Select(func.count())
@@ -36,6 +38,8 @@ async def count_inventory_adjustments(
         stmt = stmt.where(StockOperation.created_at >= created_from)
     if created_to is not None:
         stmt = stmt.where(StockOperation.created_at <= created_to)
+    if status is not None:
+        stmt = stmt.where(InventoryAdjustment.status == status)
 
     return await connection.fetch_val(stmt, model=lambda x: int(x))
 
@@ -47,7 +51,27 @@ async def fetch_inventory_adjustments(
     user_id: int | None,
     created_from: datetime | None,
     created_to: datetime | None,
+    status: OperationStatus | None,
 ) -> list[Record]:
+    iai = (
+        Select(
+            InventoryAdjustmentItem.operation_id,
+            func.json_agg(
+                aggregate_order_by(
+                    func.json_build_object(
+                        "material_id",
+                        InventoryAdjustmentItem.material_id,
+                        "expected_qty",
+                        InventoryAdjustmentItem.expected_qty,
+                        "actual_qty",
+                        InventoryAdjustmentItem.actual_qty,
+                    ),
+                    InventoryAdjustmentItem.id.asc(),
+                ),
+            ).label("items_json"),
+        )
+        .group_by(InventoryAdjustmentItem.operation_id)
+    ).subquery("inv_adj_items_agg")
     stmt = (
         Select(
             StockOperation.id,
@@ -57,12 +81,16 @@ async def fetch_inventory_adjustments(
             InventoryAdjustment.warehouse_id,
             InventoryAdjustment.description,
             StockOperation.created_by_id,
+            User.name.label("created_by_user_name"),
             StockOperation.created_at,
             StockOperation.completed_at,
             StockOperation.cancelled_at,
+            func.coalesce(iai.c.items_json, literal_column("'[]'::json")).label("items"),
         )
         .select_from(InventoryAdjustment)
         .join(StockOperation, StockOperation.id == InventoryAdjustment.operation_id)
+        .join(User, User.id == StockOperation.created_by_id)
+        .outerjoin(iai, iai.c.operation_id == StockOperation.id)
         .where(StockOperation.type == StockOperationType.INVENTORY_ADJUSTMENT)
         .order_by(StockOperation.id.desc())
         .offset((page - 1) * limit)
@@ -78,10 +106,32 @@ async def fetch_inventory_adjustments(
     if created_to is not None:
         stmt = stmt.where(StockOperation.created_at <= created_to)
 
+    if status is not None:
+        stmt = stmt.where(InventoryAdjustment.status == status)
+
     return await connection.fetch(stmt)
 
 
 async def get_inventory_adjustment(connection: Connection, operation_id: int) -> Record | None:
+    iai = (
+        Select(
+            InventoryAdjustmentItem.operation_id,
+            func.json_agg(
+                aggregate_order_by(
+                    func.json_build_object(
+                        "material_id",
+                        InventoryAdjustmentItem.material_id,
+                        "expected_qty",
+                        InventoryAdjustmentItem.expected_qty,
+                        "actual_qty",
+                        InventoryAdjustmentItem.actual_qty,
+                    ),
+                    InventoryAdjustmentItem.id.asc(),
+                ),
+            ).label("items_json"),
+        )
+        .group_by(InventoryAdjustmentItem.operation_id)
+    ).subquery("inv_adj_items_agg")
     stmt = (
         Select(
             StockOperation.id,
@@ -91,12 +141,16 @@ async def get_inventory_adjustment(connection: Connection, operation_id: int) ->
             InventoryAdjustment.warehouse_id,
             InventoryAdjustment.description,
             StockOperation.created_by_id,
+            User.name.label("created_by_user_name"),
             StockOperation.created_at,
             StockOperation.completed_at,
             StockOperation.cancelled_at,
+            func.coalesce(iai.c.items_json, literal_column("'[]'::json")).label("items"),
         )
         .select_from(InventoryAdjustment)
         .join(StockOperation, StockOperation.id == InventoryAdjustment.operation_id)
+        .join(User, User.id == StockOperation.created_by_id)
+        .outerjoin(iai, iai.c.operation_id == StockOperation.id)
         .where(StockOperation.type == StockOperationType.INVENTORY_ADJUSTMENT, StockOperation.id == operation_id)
         .order_by(StockOperation.id.desc())
     )

@@ -5,6 +5,7 @@ from pydantic import AwareDatetime, BaseModel, Field
 
 from core.models import OperationStatus
 from core.schemes import Pagination
+from modules.operations.schemes import OperationProductionOrderRef, OperationUserRef
 
 
 class ProductionOutputItemCreate(BaseModel):
@@ -30,17 +31,33 @@ class ProductionOutputUpdate(BaseModel):
     items: list[ProductionOutputItemCreate] | None = None
 
 
+class ProductionOutputItemRead(BaseModel):
+    """Позиция выпуска в ответе (как при создании, плюс партия при наличии)."""
+
+    material_id: Annotated[int, Field(ge=1, description="Идентификатор материала")]
+    quantity: Annotated[Decimal, Field(gt=0, decimal_places=3, description="Количество")]
+    unit_price: Annotated[Decimal, Field(ge=0, decimal_places=2, description="Цена выпуска за единицу")]
+    batch_id: Annotated[int | None, Field(description="Идентификатор созданной партии")] = None
+
+
 class ProductionOutputRead(BaseModel):
     id: Annotated[int, Field(ge=1, description="Идентификатор операции")]
     name: Annotated[str, Field(description="Наименование операции")]
     performed_at: AwareDatetime
     status: Annotated[OperationStatus, Field(description="Статус выпуска")]
-    production_order_id: Annotated[int, Field(ge=1)]
+    production_order: Annotated[
+        OperationProductionOrderRef,
+        Field(description="Производственный заказ"),
+    ]
     warehouse_id: Annotated[int, Field(ge=1)]
-    created_by_id: Annotated[int, Field(ge=1)]
+    created_by: Annotated[OperationUserRef, Field(description="Пользователь, создавший операцию")]
     created_at: AwareDatetime
     completed_at: AwareDatetime | None
     cancelled_at: AwareDatetime | None
+    items: Annotated[
+        list[ProductionOutputItemRead],
+        Field(default_factory=list, description="Позиции выпуска"),
+    ]
 
 
 class ProductionOutputsListResponse(BaseModel):

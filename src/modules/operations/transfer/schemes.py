@@ -5,6 +5,7 @@ from pydantic import AwareDatetime, BaseModel, Field
 
 from core.models import OperationStatus
 from core.schemes import Pagination
+from modules.operations.schemes import OperationUserRef
 
 
 class TransferItemCreate(BaseModel):
@@ -29,6 +30,15 @@ class TransferUpdate(BaseModel):
     items: list[TransferItemCreate] | None = None
 
 
+class TransferItemRead(BaseModel):
+    """Строка перемещения в ответе (как при создании, плюс партии после проведения)."""
+
+    material_id: Annotated[int, Field(ge=1, description="Идентификатор материала")]
+    quantity: Annotated[Decimal, Field(gt=0, decimal_places=3, description="Количество")]
+    old_batch_id: Annotated[int | None, Field(description="Исходная партия")] = None
+    new_batch_id: Annotated[int | None, Field(description="Партия на складе получателе")] = None
+
+
 class TransferRead(BaseModel):
     id: Annotated[int, Field(ge=1, description="Идентификатор операции")]
     name: Annotated[str, Field(description="Наименование операции")]
@@ -36,10 +46,14 @@ class TransferRead(BaseModel):
     status: Annotated[OperationStatus, Field(description="Статус перемещения")]
     from_warehouse_id: Annotated[int, Field(ge=1)]
     to_warehouse_id: Annotated[int, Field(ge=1)]
-    created_by_id: Annotated[int, Field(ge=1)]
+    created_by: Annotated[OperationUserRef, Field(description="Пользователь, создавший операцию")]
     created_at: AwareDatetime
     completed_at: AwareDatetime | None
     cancelled_at: AwareDatetime | None
+    items: Annotated[
+        list[TransferItemRead],
+        Field(default_factory=list, description="Позиции перемещения"),
+    ]
 
 
 class TransfersListResponse(BaseModel):

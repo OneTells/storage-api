@@ -5,6 +5,7 @@ from pydantic import AwareDatetime, BaseModel, Field
 
 from core.models import OperationStatus
 from core.schemes import Pagination
+from modules.operations.schemes import OperationCounterpartyRef, OperationUserRef
 
 
 class ShipmentItemCreate(BaseModel):
@@ -31,18 +32,33 @@ class ShipmentUpdate(BaseModel):
     items: list[ShipmentItemCreate] | None = None
 
 
+class ShipmentItemRead(BaseModel):
+    """Позиция отгрузки в ответе (как при создании, плюс партия при наличии)."""
+
+    material_id: Annotated[int, Field(ge=1, description="Идентификатор материала")]
+    quantity: Annotated[Decimal, Field(gt=0, decimal_places=3, description="Количество")]
+    batch_id: Annotated[int | None, Field(description="Идентификатор партии отгрузки")] = None
+
+
 class ShipmentRead(BaseModel):
     id: Annotated[int, Field(ge=1, description="Идентификатор операции")]
     name: Annotated[str, Field(description="Наименование операции")]
     performed_at: AwareDatetime
     status: Annotated[OperationStatus, Field(description="Статус отгрузки")]
-    counterparty_id: Annotated[int, Field(ge=1, description="Идентификатор клиента")]
+    customer: Annotated[
+        OperationCounterpartyRef,
+        Field(description="Клиент (покупатель)"),
+    ]
     warehouse_id: Annotated[int, Field(ge=1, description="Идентификатор склада")]
     order_number: Annotated[str | None, Field(max_length=100)]
-    created_by_id: Annotated[int, Field(ge=1)]
+    created_by: Annotated[OperationUserRef, Field(description="Пользователь, создавший операцию")]
     created_at: AwareDatetime
     completed_at: AwareDatetime | None
     cancelled_at: AwareDatetime | None
+    items: Annotated[
+        list[ShipmentItemRead],
+        Field(default_factory=list, description="Позиции отгрузки"),
+    ]
 
 
 class ShipmentsListResponse(BaseModel):

@@ -5,6 +5,7 @@ from pydantic import AwareDatetime, BaseModel, Field
 
 from core.models import OperationStatus
 from core.schemes import Pagination
+from modules.operations.schemes import OperationUserRef
 
 
 class WriteOffToProductionItemCreate(BaseModel):
@@ -33,6 +34,15 @@ class WriteOffToProductionUpdate(BaseModel):
     items: list[WriteOffToProductionItemCreate] | None = None
 
 
+class WriteOffToProductionItemRead(BaseModel):
+    """Строка списания в производство в ответе (как при создании, плюс партия при наличии)."""
+
+    material_id: Annotated[int, Field(ge=1, description="Идентификатор материала")]
+    quantity: Annotated[Decimal, Field(gt=0, decimal_places=3, description="Количество")]
+    unit_price: Annotated[Decimal, Field(ge=0, decimal_places=2, description="Цена списания за единицу")]
+    batch_id: Annotated[int | None, Field(description="Идентификатор партии списания")] = None
+
+
 class WriteOffToProductionRead(BaseModel):
     id: Annotated[int, Field(ge=1, description="Идентификатор операции")]
     name: Annotated[str, Field(description="Наименование операции")]
@@ -40,10 +50,14 @@ class WriteOffToProductionRead(BaseModel):
     status: Annotated[OperationStatus, Field(description="Статус списания в производство")]
     warehouse_id: Annotated[int, Field(ge=1)]
     production_order_reference: Annotated[str | None, Field(max_length=100)]
-    created_by_id: Annotated[int, Field(ge=1)]
+    created_by: Annotated[OperationUserRef, Field(description="Пользователь, создавший операцию")]
     created_at: AwareDatetime
     completed_at: AwareDatetime | None
     cancelled_at: AwareDatetime | None
+    items: Annotated[
+        list[WriteOffToProductionItemRead],
+        Field(default_factory=list, description="Позиции списания в производство"),
+    ]
 
 
 class WriteOffsToProductionListResponse(BaseModel):

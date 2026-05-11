@@ -3,10 +3,18 @@ from typing import Any
 
 from asyncpg import Record
 from everbase import Connection
-from sqlalchemy import Delete, Select, Update, func
-from sqlalchemy.dialects.postgresql import Insert
+from sqlalchemy import Delete, literal_column, Select, Update, func
+from sqlalchemy.dialects.postgresql import Insert, aggregate_order_by
 
-from core.models import OperationStatus, ProductionOutput, ProductionOutputItem, StockOperation, StockOperationType
+from core.models import (
+    OperationStatus,
+    ProductionOrder,
+    ProductionOutput,
+    ProductionOutputItem,
+    StockOperation,
+    StockOperationType,
+    User,
+)
 
 from modules.operations.production_output.schemes import ProductionOutputCreate, ProductionOutputUpdate
 
@@ -16,6 +24,7 @@ async def count_production_outputs(
     user_id: int | None,
     created_from: datetime | None,
     created_to: datetime | None,
+    status: OperationStatus | None,
 ) -> int:
     stmt = (
         Select(func.count())
@@ -33,6 +42,9 @@ async def count_production_outputs(
     if created_to is not None:
         stmt = stmt.where(StockOperation.created_at <= created_to)
 
+    if status is not None:
+        stmt = stmt.where(ProductionOutput.status == status)
+
     return await connection.fetch_val(stmt, model=lambda x: int(x))
 
 
@@ -43,7 +55,29 @@ async def fetch_production_outputs(
     user_id: int | None,
     created_from: datetime | None,
     created_to: datetime | None,
+    status: OperationStatus | None,
 ) -> list[Record]:
+    poi = (
+        Select(
+            ProductionOutputItem.operation_id,
+            func.json_agg(
+                aggregate_order_by(
+                    func.json_build_object(
+                        "material_id",
+                        ProductionOutputItem.material_id,
+                        "quantity",
+                        ProductionOutputItem.quantity,
+                        "unit_price",
+                        ProductionOutputItem.unit_price,
+                        "batch_id",
+                        ProductionOutputItem.batch_id,
+                    ),
+                    ProductionOutputItem.id.asc(),
+                ),
+            ).label("items_json"),
+        )
+        .group_by(ProductionOutputItem.operation_id)
+    ).subquery("production_output_items_agg")
     stmt = (
         Select(
             StockOperation.id,
@@ -51,14 +85,20 @@ async def fetch_production_outputs(
             StockOperation.performed_at,
             ProductionOutput.status,
             ProductionOutput.production_order_id,
+            ProductionOrder.comment.label("production_order_comment"),
             ProductionOutput.warehouse_id,
             StockOperation.created_by_id,
+            User.name.label("created_by_user_name"),
             StockOperation.created_at,
             StockOperation.completed_at,
             StockOperation.cancelled_at,
+            func.coalesce(poi.c.items_json, literal_column("'[]'::json")).label("items"),
         )
         .select_from(ProductionOutput)
         .join(StockOperation, StockOperation.id == ProductionOutput.operation_id)
+        .join(User, User.id == StockOperation.created_by_id)
+        .join(ProductionOrder, ProductionOrder.id == ProductionOutput.production_order_id)
+        .outerjoin(poi, poi.c.operation_id == StockOperation.id)
         .where(StockOperation.type == StockOperationType.PRODUCTION_OUTPUT)
         .order_by(StockOperation.id.desc())
         .offset((page - 1) * limit)
@@ -74,10 +114,34 @@ async def fetch_production_outputs(
     if created_to is not None:
         stmt = stmt.where(StockOperation.created_at <= created_to)
 
+    if status is not None:
+        stmt = stmt.where(ProductionOutput.status == status)
+
     return await connection.fetch(stmt)
 
 
 async def get_production_output(connection: Connection, operation_id: int) -> Record | None:
+    poi = (
+        Select(
+            ProductionOutputItem.operation_id,
+            func.json_agg(
+                aggregate_order_by(
+                    func.json_build_object(
+                        "material_id",
+                        ProductionOutputItem.material_id,
+                        "quantity",
+                        ProductionOutputItem.quantity,
+                        "unit_price",
+                        ProductionOutputItem.unit_price,
+                        "batch_id",
+                        ProductionOutputItem.batch_id,
+                    ),
+                    ProductionOutputItem.id.asc(),
+                ),
+            ).label("items_json"),
+        )
+        .group_by(ProductionOutputItem.operation_id)
+    ).subquery("production_output_items_agg")
     stmt = (
         Select(
             StockOperation.id,
@@ -85,14 +149,20 @@ async def get_production_output(connection: Connection, operation_id: int) -> Re
             StockOperation.performed_at,
             ProductionOutput.status,
             ProductionOutput.production_order_id,
+            ProductionOrder.comment.label("production_order_comment"),
             ProductionOutput.warehouse_id,
             StockOperation.created_by_id,
+            User.name.label("created_by_user_name"),
             StockOperation.created_at,
             StockOperation.completed_at,
             StockOperation.cancelled_at,
+            func.coalesce(poi.c.items_json, literal_column("'[]'::json")).label("items"),
         )
         .select_from(ProductionOutput)
         .join(StockOperation, StockOperation.id == ProductionOutput.operation_id)
+        .join(User, User.id == StockOperation.created_by_id)
+        .join(ProductionOrder, ProductionOrder.id == ProductionOutput.production_order_id)
+        .outerjoin(poi, poi.c.operation_id == StockOperation.id)
         .where(StockOperation.type == StockOperationType.PRODUCTION_OUTPUT, StockOperation.id == operation_id)
         .order_by(StockOperation.id.desc())
     )

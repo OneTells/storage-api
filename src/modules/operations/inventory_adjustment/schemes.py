@@ -5,6 +5,7 @@ from pydantic import AwareDatetime, BaseModel, Field
 
 from core.models import OperationStatus
 from core.schemes import Pagination
+from modules.operations.schemes import OperationUserRef
 
 
 class InventoryAdjustmentItemCreate(BaseModel):
@@ -30,6 +31,14 @@ class InventoryAdjustmentUpdate(BaseModel):
     items: list[InventoryAdjustmentItemCreate] | None = None
 
 
+class InventoryAdjustmentItemRead(BaseModel):
+    """Строка инвентаризации в ответе (как при создании)."""
+
+    material_id: Annotated[int, Field(ge=1, description="Идентификатор материала")]
+    expected_qty: Annotated[Decimal, Field(ge=0, decimal_places=3, description="Учётное количество")]
+    actual_qty: Annotated[Decimal, Field(ge=0, decimal_places=3, description="Фактическое количество")]
+
+
 class InventoryAdjustmentRead(BaseModel):
     id: Annotated[int, Field(ge=1, description="Идентификатор операции")]
     name: Annotated[str, Field(description="Наименование операции")]
@@ -37,10 +46,14 @@ class InventoryAdjustmentRead(BaseModel):
     status: Annotated[OperationStatus, Field(description="Статус инвентаризации")]
     warehouse_id: Annotated[int, Field(ge=1)]
     description: Annotated[str, Field(description="Описание операции")]
-    created_by_id: Annotated[int, Field(ge=1)]
+    created_by: Annotated[OperationUserRef, Field(description="Пользователь, создавший операцию")]
     created_at: AwareDatetime
     completed_at: AwareDatetime | None
     cancelled_at: AwareDatetime | None
+    items: Annotated[
+        list[InventoryAdjustmentItemRead],
+        Field(default_factory=list, description="Строки инвентаризации"),
+    ]
 
 
 class InventoryAdjustmentsListResponse(BaseModel):

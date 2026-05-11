@@ -5,6 +5,7 @@ from pydantic import AwareDatetime, BaseModel, Field
 
 from core.models import ReceiptStatus
 from core.schemes import Pagination
+from modules.operations.schemes import OperationCounterpartyRef, OperationUserRef
 
 
 class ReceiptItemCreate(BaseModel):
@@ -37,19 +38,35 @@ class ReceiptUpdate(BaseModel):
     items: list[ReceiptItemCreate] | None = None
 
 
+class ReceiptItemRead(BaseModel):
+    """Позиция приёмки в ответе (как при создании, плюс привязанная партия при наличии)."""
+
+    material_id: Annotated[int, Field(ge=1, description="Идентификатор материала")]
+    quantity: Annotated[Decimal, Field(gt=0, decimal_places=3, description="Количество")]
+    unit_price: Annotated[Decimal, Field(ge=0, decimal_places=2, description="Цена закупки за единицу")]
+    batch_id: Annotated[int | None, Field(description="Идентификатор партии после оприходования")] = None
+
+
 class ReceiptRead(BaseModel):
     id: Annotated[int, Field(ge=1, description="Идентификатор операции")]
     name: Annotated[str, Field(description="Наименование операции")]
     performed_at: AwareDatetime
     status: Annotated[ReceiptStatus, Field(description="Статус приёмки")]
-    counterparty_id: Annotated[int, Field(ge=1, description="Идентификатор поставщика")]
+    supplier: Annotated[
+        OperationCounterpartyRef,
+        Field(description="Поставщик"),
+    ]
     warehouse_id: Annotated[int, Field(ge=1, description="Идентификатор склада")]
     shipping_price: Annotated[Decimal, Field(ge=0, decimal_places=2)]
     discount: Annotated[Decimal, Field(ge=0, decimal_places=2)]
-    created_by_id: Annotated[int, Field(ge=1)]
+    created_by: Annotated[OperationUserRef, Field(description="Пользователь, создавший операцию")]
     created_at: AwareDatetime
     completed_at: AwareDatetime | None
     cancelled_at: AwareDatetime | None
+    items: Annotated[
+        list[ReceiptItemRead],
+        Field(default_factory=list, description="Позиции приёмки"),
+    ]
 
 
 class ReceiptsListResponse(BaseModel):

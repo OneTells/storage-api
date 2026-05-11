@@ -5,6 +5,7 @@ from pydantic import AwareDatetime, BaseModel, Field
 
 from core.models import ReservationStatus
 from core.schemes import Pagination
+from modules.operations.schemes import OperationUserRef
 
 IdField = Annotated[int, Field(ge=1, description="Идентификатор операции (stock_operations.id)")]
 
@@ -43,9 +44,14 @@ class ReservationRead(BaseModel):
     name: Annotated[str, Field(description="Наименование операции")]
     performed_at: AwareDatetime
     status: Annotated[ReservationStatus, Field(description="Статус резерва")]
+    warehouse_id: Annotated[int, Field(ge=1, description="Склад, с которого зарезервирован остаток")]
+    items: Annotated[
+        list[ReservationItemCreate],
+        Field(description="Позиции резерва (как при создании)"),
+    ]
     batch_id: Annotated[int, Field(ge=1)]
     quantity: Annotated[Decimal, Field(gt=0, decimal_places=3)]
-    created_by_id: Annotated[int, Field(ge=1)]
+    created_by: Annotated[OperationUserRef, Field(description="Пользователь, создавший операцию")]
     created_at: AwareDatetime
     completed_at: AwareDatetime | None
     cancelled_at: AwareDatetime | None

@@ -3,10 +3,11 @@ from typing import Any
 
 from asyncpg import Record
 from everbase import Connection
-from sqlalchemy import func, Select, Update
-from sqlalchemy.dialects.postgresql import Insert
+from sqlalchemy import cast, func, Select, Update
+from sqlalchemy.dialects.postgresql import Insert, JSON as PG_JSON
 
-from core.models import Reservation, ReservationStatus, StockOperation, StockOperationType
+from core.models import Batch, Reservation, ReservationStatus, StockOperation, StockOperationType, User
+
 from modules.operations.reservation.schemes import ReservationCreate, ReservationUpdate
 
 
@@ -15,6 +16,7 @@ async def count_reservations(
     user_id: int | None,
     created_from: datetime | None,
     created_to: datetime | None,
+    status: ReservationStatus | None,
 ) -> int:
     stmt = (
         Select(func.count())
@@ -32,6 +34,9 @@ async def count_reservations(
     if created_to is not None:
         stmt = stmt.where(StockOperation.created_at <= created_to)
 
+    if status is not None:
+        stmt = stmt.where(Reservation.status == status)
+
     return await connection.fetch_val(stmt, model=lambda x: int(x))
 
 
@@ -42,6 +47,7 @@ async def fetch_reservations(
     user_id: int | None,
     created_from: datetime | None,
     created_to: datetime | None,
+    status: ReservationStatus | None,
 ) -> list[Record]:
     stmt = (
         Select(
@@ -51,13 +57,28 @@ async def fetch_reservations(
             Reservation.status,
             Reservation.batch_id,
             Reservation.quantity,
+            Batch.warehouse_id,
+            cast(
+                func.json_build_array(
+                    func.json_build_object(
+                        "material_id",
+                        Batch.material_id,
+                        "quantity",
+                        Reservation.quantity,
+                    ),
+                ),
+                PG_JSON,
+            ).label("items"),
             StockOperation.created_by_id,
+            User.name.label("created_by_user_name"),
             StockOperation.created_at,
             StockOperation.completed_at,
             StockOperation.cancelled_at,
         )
         .select_from(Reservation)
         .join(StockOperation, StockOperation.id == Reservation.operation_id)
+        .join(User, User.id == StockOperation.created_by_id)
+        .join(Batch, Batch.id == Reservation.batch_id)
         .where(StockOperation.type == StockOperationType.RESERVATION)
         .order_by(StockOperation.id.desc())
         .offset((page - 1) * limit)
@@ -73,6 +94,9 @@ async def fetch_reservations(
     if created_to is not None:
         stmt = stmt.where(StockOperation.created_at <= created_to)
 
+    if status is not None:
+        stmt = stmt.where(Reservation.status == status)
+
     return await connection.fetch(stmt)
 
 
@@ -85,13 +109,28 @@ async def get_reservation(connection: Connection, operation_id: int) -> Record |
             Reservation.status,
             Reservation.batch_id,
             Reservation.quantity,
+            Batch.warehouse_id,
+            cast(
+                func.json_build_array(
+                    func.json_build_object(
+                        "material_id",
+                        Batch.material_id,
+                        "quantity",
+                        Reservation.quantity,
+                    ),
+                ),
+                PG_JSON,
+            ).label("items"),
             StockOperation.created_by_id,
+            User.name.label("created_by_user_name"),
             StockOperation.created_at,
             StockOperation.completed_at,
             StockOperation.cancelled_at,
         )
         .select_from(Reservation)
         .join(StockOperation, StockOperation.id == Reservation.operation_id)
+        .join(User, User.id == StockOperation.created_by_id)
+        .join(Batch, Batch.id == Reservation.batch_id)
         .where(StockOperation.type == StockOperationType.RESERVATION, StockOperation.id == operation_id)
         .order_by(StockOperation.id.desc())
     )
