@@ -114,7 +114,7 @@ async def create_product(
 
 
 @router.post(
-    "/material-shortage",
+    "/shortage",
     response_model=ProductMaterialShortageResponse,
     dependencies=[Depends(require_permissions("product.read"))],
     summary="Проверить нехватку материалов для выпуска",
