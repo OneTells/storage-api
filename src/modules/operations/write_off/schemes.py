@@ -7,42 +7,42 @@ from core.models import OperationStatus
 from core.schemes import Pagination
 
 
-class InventoryAdjustmentItemCreate(BaseModel):
+class WriteOffItemCreate(BaseModel):
     material_id: Annotated[int, Field(ge=1, description="Идентификатор материала")]
-    expected_qty: Annotated[Decimal, Field(ge=0, decimal_places=3, description="Учётное количество")]
-    actual_qty: Annotated[Decimal, Field(ge=0, decimal_places=3, description="Фактическое количество")]
+    quantity: Annotated[Decimal, Field(gt=0, decimal_places=3, description="Количество")]
+    reason: Annotated[str, Field(min_length=1, description="Причина списания по строке")]
 
 
-class InventoryAdjustmentCreate(BaseModel):
+class WriteOffCreate(BaseModel):
     name: Annotated[str, Field(min_length=1, max_length=255, description="Наименование операции")]
-    performed_at: Annotated[AwareDatetime, Field(description="Дата проведения инвентаризации")]
+    performed_at: Annotated[AwareDatetime, Field(description="Дата проведения операции")]
     warehouse_id: Annotated[int, Field(ge=1, description="Идентификатор склада")]
-    description: Annotated[str, Field(min_length=1, description="Комментарий / описание инвентаризации")]
-    items: list[InventoryAdjustmentItemCreate]
+    reason: Annotated[str, Field(min_length=1, description="Общая причина списания (шапка операции)")]
+    items: list[WriteOffItemCreate]
 
 
-class InventoryAdjustmentUpdate(BaseModel):
+class WriteOffUpdate(BaseModel):
     name: Annotated[str | None, Field(default=None, min_length=1, max_length=255)] = None
     performed_at: AwareDatetime | None = None
     warehouse_id: Annotated[int | None, Field(default=None, ge=1)] = None
-    description: Annotated[str | None, Field(default=None, min_length=1)] = None
+    reason: Annotated[str | None, Field(default=None, min_length=1)] = None
     status: OperationStatus | None = None
-    items: list[InventoryAdjustmentItemCreate] | None = None
+    items: list[WriteOffItemCreate] | None = None
 
 
-class InventoryAdjustmentRead(BaseModel):
+class WriteOffRead(BaseModel):
     id: Annotated[int, Field(ge=1, description="Идентификатор операции")]
     name: Annotated[str, Field(description="Наименование операции")]
     performed_at: AwareDatetime
-    status: Annotated[OperationStatus, Field(description="Статус инвентаризации")]
+    status: Annotated[OperationStatus, Field(description="Статус списания")]
     warehouse_id: Annotated[int, Field(ge=1)]
-    description: Annotated[str, Field(description="Описание операции")]
+    reason: Annotated[str, Field(description="Общая причина списания")]
     created_by_id: Annotated[int, Field(ge=1)]
     created_at: AwareDatetime
     completed_at: AwareDatetime | None
     cancelled_at: AwareDatetime | None
 
 
-class InventoryAdjustmentsListResponse(BaseModel):
-    items: list[InventoryAdjustmentRead]
+class WriteOffsListResponse(BaseModel):
+    items: list[WriteOffRead]
     pagination: Pagination

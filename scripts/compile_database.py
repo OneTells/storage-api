@@ -5,7 +5,7 @@ from sqlalchemy.sql.ddl import CreateTable
 
 from core.models import (
     CounterpartyRoleType, CounterpartyType, OperationStatus, ProductionOrderStatus, ReceiptStatus, ReservationStatus,
-    ResourceType, UnitCategoryEnum
+    ResourceType, StockOperationType, UnitCategoryEnum
 )
 from core.models.base import Base
 
@@ -24,6 +24,7 @@ def main() -> None:
         CounterpartyRoleType,
         CounterpartyType,
         ResourceType,
+        StockOperationType
     ]
 
     for enum_type in enums:

@@ -1,16 +1,57 @@
 from decimal import Decimal
 from typing import Annotated
 
-from pydantic import BaseModel, Field
+from pydantic import AwareDatetime, BaseModel, Field
+
+from core.models import ReceiptStatus
+from core.schemes import Pagination
 
 
-class ReceiptUnitCreate(BaseModel):
-    object_id: Annotated[int, Field(ge=1, description="Идентификатор объекта")]
-    warehouse_id: Annotated[int, Field(ge=1, description="Идентификатор склада")]
-    price: Annotated[Decimal | None, Field(ge=0, decimal_places=2, description="Цена")] = None
+class ReceiptItemCreate(BaseModel):
+    material_id: Annotated[int, Field(ge=1, description="Идентификатор материала")]
+    quantity: Annotated[Decimal, Field(gt=0, decimal_places=3, description="Количество")]
+    unit_price: Annotated[Decimal, Field(ge=0, decimal_places=2, description="Цена закупки за единицу")]
 
 
 class ReceiptCreate(BaseModel):
-    name: Annotated[str, Field(min_length=1, max_length=255, description="Название операции")]
-    supplier_id: Annotated[int, Field(ge=1, description="Идентификатор клиента")]
-    units: list[ReceiptUnitCreate]
+    name: Annotated[str, Field(min_length=1, max_length=255, description="Наименование операции")]
+    performed_at: Annotated[AwareDatetime, Field(description="Дата проведения операции")]
+    warehouse_id: Annotated[int, Field(ge=1, description="Идентификатор склада")]
+    supplier_id: Annotated[int, Field(ge=1, description="Идентификатор поставщика")]
+    shipping_price: Annotated[Decimal, Field(ge=0, decimal_places=2, description="Стоимость доставки")] = Decimal(
+        "0"
+    )
+    discount: Annotated[Decimal, Field(ge=0, decimal_places=2, description="Скидка на приёмку")] = Decimal("0")
+    items: list[ReceiptItemCreate]
+
+
+class ReceiptUpdate(BaseModel):
+    name: Annotated[str | None, Field(default=None, min_length=1, max_length=255, description="Наименование операции")] = None
+    performed_at: Annotated[AwareDatetime | None, Field(default=None, description="Дата проведения операции")] = None
+    warehouse_id: Annotated[int | None, Field(default=None, ge=1, description="Идентификатор склада")] = None
+    supplier_id: Annotated[int | None, Field(default=None, ge=1, description="Идентификатор поставщика")] = None
+    shipping_price: Annotated[
+        Decimal | None, Field(default=None, ge=0, decimal_places=2, description="Стоимость доставки")] = None
+    discount: Annotated[Decimal | None, Field(default=None, ge=0, decimal_places=2, description="Скидка на приёмку")] = None
+    status: ReceiptStatus | None = None
+    items: list[ReceiptItemCreate] | None = None
+
+
+class ReceiptRead(BaseModel):
+    id: Annotated[int, Field(ge=1, description="Идентификатор операции")]
+    name: Annotated[str, Field(description="Наименование операции")]
+    performed_at: AwareDatetime
+    status: Annotated[ReceiptStatus, Field(description="Статус приёмки")]
+    counterparty_id: Annotated[int, Field(ge=1, description="Идентификатор поставщика")]
+    warehouse_id: Annotated[int, Field(ge=1, description="Идентификатор склада")]
+    shipping_price: Annotated[Decimal, Field(ge=0, decimal_places=2)]
+    discount: Annotated[Decimal, Field(ge=0, decimal_places=2)]
+    created_by_id: Annotated[int, Field(ge=1)]
+    created_at: AwareDatetime
+    completed_at: AwareDatetime | None
+    cancelled_at: AwareDatetime | None
+
+
+class ReceiptsListResponse(BaseModel):
+    items: list[ReceiptRead]
+    pagination: Pagination

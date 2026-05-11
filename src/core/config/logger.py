@@ -27,7 +27,7 @@ class TelegramHandler:
             message = message[:self.MAX_MESSAGE_LENGTH]
 
         async with self._lock:
-            for attempt in range(self._max_retries):
+            for _ in range(self._max_retries):
                 try:
                     await bot.send_message(
                         chat_id=self._chat_id,
@@ -56,16 +56,16 @@ def configure_logging() -> None:
     logger.add(
         sys.stderr,
         format=LOG_FORMAT,
-        level='INFO',
+        level='DEBUG',
         diagnose=False
     )
 
-    logger.add(
-        TelegramHandler(settings.telegram_log_chat_id),
-        level="WARNING",
-        format=lambda record: "Уровень: {level}\nСообщение: {message}".format(**record),
-        diagnose=False
-    )
+    # logger.add(
+    #     TelegramHandler(settings.telegram_log_chat_id),
+    #     level="WARNING",
+    #     format=lambda record: "Уровень: {level}\nСообщение: {message}".format(**record),
+    #     diagnose=False
+    # )
 
 
 async def complete_logging() -> None:

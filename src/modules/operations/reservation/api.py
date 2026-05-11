@@ -1,48 +1,148 @@
+from datetime import datetime
 from typing import Annotated
 
 from everbase import Connection
-from fastapi import APIRouter, Body, Depends
+from fastapi import APIRouter, Body, Depends, Path, Query
 
+from core.exceptions import APIException
 from core.methods import get_connection, get_current_user, require_permissions
-from core.schemes import UserModel
+from core.schemes import Pagination, UserModel
+from modules.operations.repositories import (
+    fetch_batch_mv,
+    find_fifo_batch_covering_quantity,
+    material_exists,
+    warehouse_exists,
+)
+from modules.operations.reservation import repositories
 from modules.operations.reservation.responses import RESERVATION_404
-from modules.operations.reservation.schemes import ReservationCreate
+from modules.operations.reservation.schemes import (
+    ReservationCreate, ReservationRead, ReservationsListResponse, ReservationUpdate
+)
+from modules.operations.responses import OPERATION_HEADER_NOT_FOUND
 from modules.operations.schemes import OperationCreateResponse
 
 router = APIRouter()
 
 
+@router.get(
+    "/reservations",
+    response_model=ReservationsListResponse,
+    dependencies=[Depends(require_permissions("operations.reservation.read"))],
+    summary="Список резервирований",
+)
+async def fetch_reservations(
+    connection: Annotated[Connection, Depends(get_connection)],
+    page: Annotated[int, Query(ge=1)] = 1,
+    limit: Annotated[int, Query(ge=1, le=1000)] = 100,
+    user_id: Annotated[int | None, Query(ge=1, description="Фильтр по пользователю")] = None,
+    created_from: Annotated[datetime | None, Query(description="Начало периода создания операции")] = None,
+    created_to: Annotated[datetime | None, Query(description="Конец периода создания операции")] = None,
+):
+    rows = await repositories.fetch_reservations(connection, page, limit, user_id, created_from, created_to)
+    total = await repositories.count_reservations(connection, user_id, created_from, created_to)
+
+    return ReservationsListResponse(
+        items=[ReservationRead.model_validate(dict(r)) for r in rows],
+        pagination=Pagination(
+            page=page,
+            limit=limit,
+            total=total,
+            pages=(total + limit - 1) // limit if total else 0,
+            has_next=page * limit < total if total else False,
+            has_prev=page > 1 if total else False,
+        ),
+    )
+
+
+@router.get(
+    "/reservations/{operation_id}",
+    response_model=ReservationRead,
+    dependencies=[Depends(require_permissions("operations.reservation.read"))],
+    summary="Получить резервирование",
+    responses={404: OPERATION_HEADER_NOT_FOUND},
+)
+async def get_reservation(
+    connection: Annotated[Connection, Depends(get_connection)],
+    operation_id: Annotated[int, Path(ge=1, description="Идентификатор операции")],
+):
+    row = await repositories.get_reservation(connection, operation_id)
+
+    if row is None:
+        raise APIException(status_code=404, code="OPERATION_NOT_FOUND", message="Операция не найдена")
+
+    return ReservationRead.model_validate(dict(row))
+
+
 @router.post(
-    "/reservation",
+    "/reservations",
     response_model=OperationCreateResponse,
     status_code=201,
     dependencies=[Depends(require_permissions("operations.reservation.create"))],
-    summary="Бронирование",
+    summary="Создать резервирование",
     responses={
-        404: RESERVATION_404
-    }
+        404: RESERVATION_404,
+    },
 )
 async def create_reservation(
     connection: Annotated[Connection, Depends(get_connection)],
     user: Annotated[UserModel, Depends(get_current_user)],
     payload: Annotated[ReservationCreate, Body()],
 ):
-    raise NotImplementedError
+    line = payload.items[0]
+
+    if not await warehouse_exists(connection, payload.warehouse_id):
+        raise APIException(status_code=404, code="WAREHOUSE_NOT_FOUND", message="Склад не найден")
+
+    if not await material_exists(connection, line.material_id):
+        raise APIException(status_code=404, code="MATERIAL_NOT_FOUND", message="Материал не найден")
+
+    fifo = await find_fifo_batch_covering_quantity(
+        connection, payload.warehouse_id, line.material_id, line.quantity
+    )
+
+    if fifo is None:
+        raise APIException(
+            status_code=422,
+            code="INSUFFICIENT_STOCK_FIFO",
+            message="Нет партии с достаточным свободным остатком для резерва по FIFO на указанном складе",
+        )
+
+    op_id = await repositories.create_reservation(connection, user.id, payload, fifo_batch_id=int(fifo["id"]))
+    return OperationCreateResponse(id=op_id)
 
 
-@router.post(
-    "/reservation/cancel",
+@router.patch(
+    "/reservations/{operation_id}",
     response_model=None,
     status_code=204,
-    dependencies=[Depends(require_permissions("operations.reservation.cancel"))],
-    summary="Отмена бронирования",
+    dependencies=[Depends(require_permissions("operations.reservation.update"))],
+    summary="Изменить резервирование",
     responses={
-        404: RESERVATION_404
-    }
+        404: RESERVATION_404,
+    },
 )
-async def cancel_reservation(
+async def update_reservation(
     connection: Annotated[Connection, Depends(get_connection)],
-    user: Annotated[UserModel, Depends(get_current_user)],
-    operation_id: Annotated[int, Body(ge=1, description="Идентификатор операции бронирования")],
+    operation_id: Annotated[int, Path(ge=1, description="Идентификатор операции")],
+    payload: Annotated[ReservationUpdate, Body()],
 ):
-    raise NotImplementedError
+    row = await repositories.get_reservation(connection, operation_id)
+
+    if row is None:
+        raise APIException(status_code=404, code="OPERATION_NOT_FOUND", message="Операция не найдена")
+
+    if payload.quantity is not None:
+        next_qty = payload.quantity
+        b = await fetch_batch_mv(connection, int(row["batch_id"]))
+
+        if b is None:
+            raise APIException(status_code=404, code="BATCH_NOT_FOUND", message="Партия не найдена")
+
+        if b["remaining"] < next_qty:
+            raise APIException(
+                status_code=404,
+                code="INSUFFICIENT_BATCH_QUANTITY",
+                message="Недостаточно остатка в партии",
+            )
+
+    await repositories.update_reservation(connection, operation_id, payload)

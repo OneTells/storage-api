@@ -1,16 +1,16 @@
 from core.schemes import ErrorResponse
 
-PRODUCTION_OUTPUT_404 = {
+WRITE_OFF_404 = {
     "description": "Сущность не найдена",
     "model": ErrorResponse,
     "content": {
         "application/json": {
             "examples": {
-                "production_order_not_found": {
-                    "summary": "Производственный заказ не найден",
+                "warehouse_not_found": {
+                    "summary": "Склад не найден",
                     "value": {
-                        "code": "PRODUCTION_ORDER_NOT_FOUND",
-                        "message": "Производственный заказ не найден",
+                        "code": "WAREHOUSE_NOT_FOUND",
+                        "message": "Склад не найден",
                         "details": {},
                     },
                 },
@@ -19,14 +19,6 @@ PRODUCTION_OUTPUT_404 = {
                     "value": {
                         "code": "MATERIAL_NOT_FOUND",
                         "message": "Материал не найден",
-                        "details": {},
-                    },
-                },
-                "warehouse_not_found": {
-                    "summary": "Склад не найден",
-                    "value": {
-                        "code": "WAREHOUSE_NOT_FOUND",
-                        "message": "Склад не найден",
                         "details": {},
                     },
                 },

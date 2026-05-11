@@ -6,25 +6,24 @@ from fastapi import APIRouter, Body, Depends, Path, Query
 
 from core.exceptions import APIException
 from core.methods import get_connection, get_current_user, require_permissions
-from core.models import CounterpartyRoleType
 from core.schemes import Pagination, UserModel
+from modules.operations.repositories import material_exists, warehouse_exists
 from modules.operations.responses import OPERATION_HEADER_NOT_FOUND
-from modules.operations.shipment import repositories
 from modules.operations.schemes import OperationCreateResponse
-from modules.operations.shipment.responses import SHIPMENT_404
-from modules.operations.shipment.schemes import ShipmentCreate, ShipmentRead, ShipmentsListResponse, ShipmentUpdate
-from modules.operations.repositories import counterparty_role_exists, material_exists, warehouse_exists
+from modules.operations.write_off import repositories
+from modules.operations.write_off.responses import WRITE_OFF_404
+from modules.operations.write_off.schemes import WriteOffCreate, WriteOffRead, WriteOffUpdate, WriteOffsListResponse
 
 router = APIRouter()
 
 
 @router.get(
-    "/shipments",
-    response_model=ShipmentsListResponse,
-    dependencies=[Depends(require_permissions("operations.shipment.read"))],
-    summary="Список отгрузок",
+    "/write_offs",
+    response_model=WriteOffsListResponse,
+    dependencies=[Depends(require_permissions("operations.write_off.read"))],
+    summary="Список прочих списаний",
 )
-async def fetch_shipments(
+async def fetch_write_offs(
     connection: Annotated[Connection, Depends(get_connection)],
     page: Annotated[int, Query(ge=1)] = 1,
     limit: Annotated[int, Query(ge=1, le=1000)] = 100,
@@ -32,11 +31,11 @@ async def fetch_shipments(
     created_from: Annotated[datetime | None, Query(description="Начало периода создания операции")] = None,
     created_to: Annotated[datetime | None, Query(description="Конец периода создания операции")] = None,
 ):
-    rows = await repositories.fetch_shipments(connection, page, limit, user_id, created_from, created_to)
-    total = await repositories.count_shipments(connection, user_id, created_from, created_to)
+    rows = await repositories.fetch_write_offs(connection, page, limit, user_id, created_from, created_to)
+    total = await repositories.count_write_offs(connection, user_id, created_from, created_to)
 
-    return ShipmentsListResponse(
-        items=[ShipmentRead.model_validate(dict(r)) for r in rows],
+    return WriteOffsListResponse(
+        items=[WriteOffRead.model_validate(dict(r)) for r in rows],
         pagination=Pagination(
             page=page,
             limit=limit,
@@ -49,38 +48,36 @@ async def fetch_shipments(
 
 
 @router.get(
-    "/shipments/{operation_id}",
-    response_model=ShipmentRead,
-    dependencies=[Depends(require_permissions("operations.shipment.read"))],
-    summary="Получить отгрузку",
+    "/write_offs/{operation_id}",
+    response_model=WriteOffRead,
+    dependencies=[Depends(require_permissions("operations.write_off.read"))],
+    summary="Получить прочее списание",
     responses={404: OPERATION_HEADER_NOT_FOUND},
 )
-async def get_shipment(
+async def get_write_off(
     connection: Annotated[Connection, Depends(get_connection)],
     operation_id: Annotated[int, Path(ge=1, description="Идентификатор операции")],
 ):
-    row = await repositories.get_shipment(connection, operation_id)
+    row = await repositories.get_write_off(connection, operation_id)
 
     if row is None:
         raise APIException(status_code=404, code="OPERATION_NOT_FOUND", message="Операция не найдена")
 
-    return ShipmentRead.model_validate(dict(row))
+    return WriteOffRead.model_validate(dict(row))
 
 
 @router.post(
-    "/shipments",
+    "/write_offs",
     response_model=OperationCreateResponse,
     status_code=201,
-    dependencies=[Depends(require_permissions("operations.shipment.create"))],
-    summary="Создать отгрузку",
-    responses={
-        404: SHIPMENT_404,
-    },
+    dependencies=[Depends(require_permissions("operations.write_off.create"))],
+    summary="Создать прочее списание",
+    responses={404: WRITE_OFF_404},
 )
-async def create_shipment(
+async def create_write_off(
     connection: Annotated[Connection, Depends(get_connection)],
     user: Annotated[UserModel, Depends(get_current_user)],
-    payload: Annotated[ShipmentCreate, Body()],
+    payload: Annotated[WriteOffCreate, Body()],
 ):
     if not payload.items:
         raise APIException(status_code=422, code="EMPTY_ITEMS", message="Список позиций не может быть пустым")
@@ -88,33 +85,28 @@ async def create_shipment(
     if not await warehouse_exists(connection, payload.warehouse_id):
         raise APIException(status_code=404, code="WAREHOUSE_NOT_FOUND", message="Склад не найден")
 
-    if not await counterparty_role_exists(connection, payload.customer_id, CounterpartyRoleType.CUSTOMER):
-        raise APIException(status_code=404, code="CUSTOMER_NOT_FOUND", message="Клиент не найден")
-
     for it in payload.items:
         if not await material_exists(connection, it.material_id):
             raise APIException(status_code=404, code="MATERIAL_NOT_FOUND", message="Материал не найден")
 
-    op_id = await repositories.create_shipment(connection, user.id, payload)
+    op_id = await repositories.create_write_off(connection, user.id, payload)
     return OperationCreateResponse(id=op_id)
 
 
 @router.patch(
-    "/shipments/{operation_id}",
+    "/write_offs/{operation_id}",
     response_model=None,
     status_code=204,
-    dependencies=[Depends(require_permissions("operations.shipment.update"))],
-    summary="Изменить отгрузку",
-    responses={
-        404: SHIPMENT_404,
-    },
+    dependencies=[Depends(require_permissions("operations.write_off.update"))],
+    summary="Изменить прочее списание",
+    responses={404: WRITE_OFF_404},
 )
-async def update_shipment(
+async def update_write_off(
     connection: Annotated[Connection, Depends(get_connection)],
     operation_id: Annotated[int, Path(ge=1, description="Идентификатор операции")],
-    payload: Annotated[ShipmentUpdate, Body()],
+    payload: Annotated[WriteOffUpdate, Body()],
 ):
-    row = await repositories.get_shipment(connection, operation_id)
+    row = await repositories.get_write_off(connection, operation_id)
 
     if row is None:
         raise APIException(status_code=404, code="OPERATION_NOT_FOUND", message="Операция не найдена")
@@ -122,10 +114,6 @@ async def update_shipment(
     if payload.warehouse_id is not None:
         if not await warehouse_exists(connection, payload.warehouse_id):
             raise APIException(status_code=404, code="WAREHOUSE_NOT_FOUND", message="Склад не найден")
-
-    if payload.customer_id is not None:
-        if not await counterparty_role_exists(connection, payload.customer_id, CounterpartyRoleType.CUSTOMER):
-            raise APIException(status_code=404, code="CUSTOMER_NOT_FOUND", message="Клиент не найден")
 
     if payload.items is not None:
         if not payload.items:
@@ -135,4 +123,4 @@ async def update_shipment(
             if not await material_exists(connection, it.material_id):
                 raise APIException(status_code=404, code="MATERIAL_NOT_FOUND", message="Материал не найден")
 
-    await repositories.update_shipment(connection, operation_id, payload)
+    await repositories.update_write_off(connection, operation_id, payload)

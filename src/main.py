@@ -54,14 +54,16 @@ async def api_exception_handler(_: Request, exc: APIException) -> Response:
 
 
 @app.exception_handler(RequestValidationError)
-def validation_exception_handler(_: Request, __: RequestValidationError) -> Response:
+def validation_exception_handler(_: Request, exc: RequestValidationError) -> Response:
     return Response(
         status_code=HTTP_422_UNPROCESSABLE_CONTENT,
         content=dumps(
             {
                 "code": "UNPROCESSABLE_ENTITY",
                 "message": "Необрабатываемая сущность",
-                "details": {}
+                "details": {
+                    'errors': exc.errors()
+                }
             }
         ),
         media_type="application/json"

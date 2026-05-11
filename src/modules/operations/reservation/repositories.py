@@ -1,0 +1,162 @@
+from datetime import datetime, UTC
+from typing import Any
+
+from asyncpg import Record
+from everbase import Connection
+from sqlalchemy import func, Select, Update
+from sqlalchemy.dialects.postgresql import Insert
+
+from core.models import Reservation, ReservationStatus, StockOperation, StockOperationType
+from modules.operations.reservation.schemes import ReservationCreate, ReservationUpdate
+
+
+async def count_reservations(
+    connection: Connection,
+    user_id: int | None,
+    created_from: datetime | None,
+    created_to: datetime | None,
+) -> int:
+    stmt = (
+        Select(func.count())
+        .select_from(Reservation)
+        .join(StockOperation, StockOperation.id == Reservation.operation_id)
+        .where(StockOperation.type == StockOperationType.RESERVATION)
+    )
+
+    if user_id is not None:
+        stmt = stmt.where(StockOperation.created_by_id == user_id)
+
+    if created_from is not None:
+        stmt = stmt.where(StockOperation.created_at >= created_from)
+
+    if created_to is not None:
+        stmt = stmt.where(StockOperation.created_at <= created_to)
+
+    return await connection.fetch_val(stmt, model=lambda x: int(x))
+
+
+async def fetch_reservations(
+    connection: Connection,
+    page: int,
+    limit: int,
+    user_id: int | None,
+    created_from: datetime | None,
+    created_to: datetime | None,
+) -> list[Record]:
+    stmt = (
+        Select(
+            StockOperation.id,
+            StockOperation.name,
+            StockOperation.performed_at,
+            Reservation.status,
+            Reservation.batch_id,
+            Reservation.quantity,
+            StockOperation.created_by_id,
+            StockOperation.created_at,
+            StockOperation.completed_at,
+            StockOperation.cancelled_at,
+        )
+        .select_from(Reservation)
+        .join(StockOperation, StockOperation.id == Reservation.operation_id)
+        .where(StockOperation.type == StockOperationType.RESERVATION)
+        .order_by(StockOperation.id.desc())
+        .offset((page - 1) * limit)
+        .limit(limit)
+    )
+
+    if user_id is not None:
+        stmt = stmt.where(StockOperation.created_by_id == user_id)
+
+    if created_from is not None:
+        stmt = stmt.where(StockOperation.created_at >= created_from)
+
+    if created_to is not None:
+        stmt = stmt.where(StockOperation.created_at <= created_to)
+
+    return await connection.fetch(stmt)
+
+
+async def get_reservation(connection: Connection, operation_id: int) -> Record | None:
+    stmt = (
+        Select(
+            StockOperation.id,
+            StockOperation.name,
+            StockOperation.performed_at,
+            Reservation.status,
+            Reservation.batch_id,
+            Reservation.quantity,
+            StockOperation.created_by_id,
+            StockOperation.created_at,
+            StockOperation.completed_at,
+            StockOperation.cancelled_at,
+        )
+        .select_from(Reservation)
+        .join(StockOperation, StockOperation.id == Reservation.operation_id)
+        .where(StockOperation.type == StockOperationType.RESERVATION, StockOperation.id == operation_id)
+        .order_by(StockOperation.id.desc())
+    )
+
+    return await connection.fetch_row(stmt)
+
+
+async def create_reservation(connection: Connection, user_id: int, payload: ReservationCreate, fifo_batch_id: int) -> int:
+    line = payload.items[0]
+    perf = datetime.now(UTC)
+
+    async with connection.transaction():
+        op_id = await connection.fetch_val(
+            Insert(StockOperation)
+            .values(
+                type=StockOperationType.RESERVATION,
+                name=payload.name,
+                performed_at=perf,
+                created_by_id=user_id,
+            )
+            .returning(StockOperation.id)
+        )
+
+        await connection.execute(
+            Insert(Reservation).values(
+                operation_id=op_id,
+                batch_id=fifo_batch_id,
+                quantity=line.quantity,
+                status=ReservationStatus.ACTIVE,
+            )
+        )
+
+    return int(op_id)
+
+
+async def update_reservation(connection: Connection, operation_id: int, payload: ReservationUpdate) -> None:
+    now = datetime.now(UTC)
+
+    async with connection.transaction():
+        so_vals: dict[str, Any] = {}
+
+        if payload.name is not None:
+            so_vals["name"] = payload.name
+
+        if payload.performed_at is not None:
+            so_vals["performed_at"] = payload.performed_at
+
+        if payload.status is not None:
+            if payload.status == ReservationStatus.RELEASED:
+                so_vals["completed_at"] = now
+            elif payload.status == ReservationStatus.CANCELLED:
+                so_vals["cancelled_at"] = now
+
+        if so_vals:
+            await connection.execute(Update(StockOperation).where(StockOperation.id == operation_id).values(**so_vals))
+
+        r_vals: dict[str, Any] = {}
+
+        if payload.quantity is not None:
+            r_vals["quantity"] = payload.quantity
+
+        if payload.status is not None:
+            r_vals["status"] = payload.status
+
+        if r_vals:
+            await connection.execute(
+                Update(Reservation).where(Reservation.operation_id == operation_id).values(**r_vals)
+            )

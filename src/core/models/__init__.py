@@ -16,8 +16,9 @@ from .products import (
 from .resources import Resource, ResourceType
 from .stock_operations import (
     InventoryAdjustment, InventoryAdjustmentItem, InventoryAdjustmentItemDetails, OperationStatus, ProductionOutput,
-    ProductionOutputItem, Receipt, ReceiptItem, ReceiptStatus, Reservation, ReservationStatus, Shipment, ShipmentItem, Transfer,
-    TransferItem, WriteOff, WriteOffItem, WriteOffToProduction, WriteOffToProductionItem
+    ProductionOutputItem, Receipt, ReceiptItem, ReceiptStatus, Reservation, ReservationStatus, Shipment, ShipmentItem,
+    StockOperation, StockOperationType, Transfer, TransferItem, WriteOff, WriteOffItem, WriteOffToProduction,
+    WriteOffToProductionItem
 )
 from .units import Unit, UnitCategoryEnum
 from .users import Permission, Role, RolePermission, User, UserRole, UserSession
@@ -56,6 +57,8 @@ __all__ = (
 
     "OperationStatus",
     "ReceiptStatus",
+    "StockOperation",
+    "StockOperationType",
     "Receipt",
     "ReceiptItem",
     "ProductionOutput",
