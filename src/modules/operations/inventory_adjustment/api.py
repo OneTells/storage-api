@@ -16,6 +16,7 @@ from modules.operations.inventory_adjustment.schemes import (
     InventoryAdjustmentCreate, InventoryAdjustmentRead, InventoryAdjustmentsListResponse, InventoryAdjustmentUpdate
 )
 from modules.operations.repositories import InsufficientBatchesForFifoError, material_exists, warehouse_exists
+from modules.operations.exceptions import StockOperationError
 from modules.operations.responses import OPERATION_HEADER_NOT_FOUND
 from modules.operations.schemes import OperationCreateResponse
 
@@ -118,14 +119,7 @@ async def create_inventory_adjustment(
         if not await material_exists(connection, it.material_id):
             raise APIException(status_code=404, code="MATERIAL_NOT_FOUND", message="Материал не найден")
 
-    try:
-        op_id = await repositories.create_inventory_adjustment(connection, user.id, payload)
-    except InsufficientBatchesForFifoError:
-        raise APIException(
-            status_code=422,
-            code="INVENTORY_ADJUSTMENT_FIFO_NO_BATCH",
-            message="Нет партий материала на складе для распределения фактического количества по FIFO",
-        ) from None
+    op_id = await repositories.create_inventory_adjustment(connection, user.id, payload)
     return OperationCreateResponse(id=op_id)
 
 
@@ -163,6 +157,8 @@ async def update_inventory_adjustment(
 
     try:
         await repositories.update_inventory_adjustment(connection, operation_id, payload)
+    except StockOperationError as e:
+        raise APIException(status_code=422, code=e.code, message=e.message) from e
     except InsufficientBatchesForFifoError:
         raise APIException(
             status_code=422,

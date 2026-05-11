@@ -2,9 +2,12 @@ from decimal import Decimal
 
 from asyncpg import Record
 from everbase import Connection
-from sqlalchemy import Select
+from sqlalchemy import Select, Update
+from sqlalchemy.dialects.postgresql import Insert
 
 from core.models import Batch, Counterparty, CounterpartyRoleType, Material, ProductionOrder, Warehouse
+
+from modules.operations.exceptions import InsufficientStockError, StockIntegrityError
 
 
 async def warehouse_exists(connection: Connection, warehouse_id: int) -> bool:
@@ -143,3 +146,47 @@ async def find_fifo_batch_covering_quantity(
     )
 
     return await connection.fetch_row(query)
+
+
+async def adjust_batch_remaining(connection: Connection, batch_id: int, delta: Decimal) -> None:
+    row = await fetch_batch_mv(connection, batch_id)
+    if row is None:
+        raise StockIntegrityError("Партия не найдена")
+    new_rem: Decimal = row["remaining"] + delta
+    if new_rem < 0:
+        raise InsufficientStockError("Недостаточно остатка в партии")
+    await connection.execute(Update(Batch).where(Batch.id == batch_id).values(remaining=new_rem))
+
+
+async def insert_inbound_batch(
+    connection: Connection,
+    *,
+    warehouse_id: int,
+    material_id: int,
+    quantity: Decimal,
+) -> int:
+    op_id = await connection.fetch_val(
+        Insert(Batch)
+        .values(
+            warehouse_id=warehouse_id,
+            material_id=material_id,
+            quantity=quantity,
+            remaining=quantity,
+        )
+        .returning(Batch.id)
+    )
+    return int(op_id)
+
+
+async def try_single_batch_outbound(
+    connection: Connection,
+    *,
+    warehouse_id: int,
+    material_id: int,
+    quantity: Decimal,
+) -> int | None:
+    row = await find_fifo_batch_covering_quantity(connection, warehouse_id, material_id, quantity)
+    if row is None:
+        return None
+    await adjust_batch_remaining(connection, int(row["id"]), -quantity)
+    return int(row["id"])

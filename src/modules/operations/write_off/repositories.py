@@ -8,6 +8,8 @@ from sqlalchemy.dialects.postgresql import Insert, aggregate_order_by
 
 from core.models import OperationStatus, StockOperation, StockOperationType, User, WriteOff, WriteOffItem
 
+from modules.operations.exceptions import InsufficientStockError, StockIntegrityError
+from modules.operations.repositories import adjust_batch_remaining, try_single_batch_outbound
 from modules.operations.write_off.schemes import WriteOffCreate, WriteOffUpdate
 
 
@@ -198,6 +200,44 @@ async def update_write_off(connection: Connection, operation_id: int, payload: W
     now = datetime.now(UTC)
 
     async with connection.transaction():
+        prev = await connection.fetch_row(Select(WriteOff.status).where(WriteOff.operation_id == operation_id))
+        if prev is None:
+            return
+
+        prev_status: OperationStatus = prev["status"]
+        reverted_completed = False
+
+        if payload.items is not None:
+            if prev_status == OperationStatus.COMPLETED:
+                await revert_write_off_completed(connection, operation_id)
+                reverted_completed = True
+            await connection.execute(Delete(WriteOffItem).where(WriteOffItem.operation_id == operation_id))
+
+            for it in payload.items:
+                await connection.execute(
+                    Insert(WriteOffItem).values(
+                        operation_id=operation_id,
+                        material_id=it.material_id,
+                        quantity=it.quantity,
+                        reason=it.reason,
+                        batch_id=None,
+                    )
+                )
+
+        if payload.status is not None:
+            if payload.status == OperationStatus.COMPLETED and (
+                prev_status != OperationStatus.COMPLETED or reverted_completed
+            ):
+                await apply_write_off_completed(connection, operation_id)
+            if (
+                payload.status == OperationStatus.CANCELLED
+                and prev_status == OperationStatus.COMPLETED
+                and not reverted_completed
+            ):
+                await revert_write_off_completed(connection, operation_id)
+        elif reverted_completed and prev_status == OperationStatus.COMPLETED:
+            await apply_write_off_completed(connection, operation_id)
+
         so_vals: dict[str, Any] = {}
 
         if payload.name is not None:
@@ -229,16 +269,38 @@ async def update_write_off(connection: Connection, operation_id: int, payload: W
         if w_vals:
             await connection.execute(Update(WriteOff).where(WriteOff.operation_id == operation_id).values(**w_vals))
 
-        if payload.items is not None:
-            await connection.execute(Delete(WriteOffItem).where(WriteOffItem.operation_id == operation_id))
 
-            for it in payload.items:
-                await connection.execute(
-                    Insert(WriteOffItem).values(
-                        operation_id=operation_id,
-                        material_id=it.material_id,
-                        quantity=it.quantity,
-                        reason=it.reason,
-                        batch_id=None,
-                    )
-                )
+async def apply_write_off_completed(connection: Connection, operation_id: int) -> None:
+    hdr = await connection.fetch_row(
+        Select(WriteOff.warehouse_id).where(WriteOff.operation_id == operation_id)
+    )
+    if hdr is None:
+        raise StockIntegrityError("Списание не найдено")
+    wh = int(hdr["warehouse_id"])
+
+    rows = await connection.fetch(
+        Select(WriteOffItem.id, WriteOffItem.material_id, WriteOffItem.quantity, WriteOffItem.batch_id)
+        .where(WriteOffItem.operation_id == operation_id)
+        .order_by(WriteOffItem.id.asc())
+    )
+    for r in rows:
+        if r["batch_id"] is not None:
+            continue
+        bid = await try_single_batch_outbound(
+            connection, warehouse_id=wh, material_id=int(r["material_id"]), quantity=r["quantity"]
+        )
+        if bid is None:
+            raise InsufficientStockError("Недостаточно одной партии под строку списания")
+        await connection.execute(Update(WriteOffItem).where(WriteOffItem.id == r["id"]).values(batch_id=bid))
+
+
+async def revert_write_off_completed(connection: Connection, operation_id: int) -> None:
+    rows = await connection.fetch(
+        Select(WriteOffItem.batch_id, WriteOffItem.quantity)
+        .where(WriteOffItem.operation_id == operation_id, WriteOffItem.batch_id.is_not(None))
+    )
+    for r in rows:
+        await adjust_batch_remaining(connection, int(r["batch_id"]), r["quantity"])
+    await connection.execute(
+        Update(WriteOffItem).where(WriteOffItem.operation_id == operation_id).values(batch_id=None)
+    )

@@ -7,6 +7,7 @@ from sqlalchemy import Delete, literal_column, Select, Update, func
 from sqlalchemy.dialects.postgresql import Insert, aggregate_order_by
 
 from core.models import (
+    Batch,
     OperationStatus,
     ProductionOrder,
     ProductionOutput,
@@ -16,7 +17,9 @@ from core.models import (
     User,
 )
 
+from modules.operations.exceptions import StockIntegrityError
 from modules.operations.production_output.schemes import ProductionOutputCreate, ProductionOutputUpdate
+from modules.operations.repositories import insert_inbound_batch
 
 
 async def count_production_outputs(
@@ -210,6 +213,46 @@ async def update_production_output(connection: Connection, operation_id: int, pa
     now = datetime.now(UTC)
 
     async with connection.transaction():
+        prev = await connection.fetch_row(
+            Select(ProductionOutput.status).where(ProductionOutput.operation_id == operation_id)
+        )
+        if prev is None:
+            return
+
+        prev_status: OperationStatus = prev["status"]
+        reverted_completed = False
+
+        if payload.items is not None:
+            if prev_status == OperationStatus.COMPLETED:
+                await revert_production_output_completed(connection, operation_id)
+                reverted_completed = True
+            await connection.execute(Delete(ProductionOutputItem).where(ProductionOutputItem.operation_id == operation_id))
+
+            for it in payload.items:
+                await connection.execute(
+                    Insert(ProductionOutputItem).values(
+                        operation_id=operation_id,
+                        material_id=it.material_id,
+                        quantity=it.quantity,
+                        unit_price=it.unit_price,
+                        batch_id=None,
+                    )
+                )
+
+        if payload.status is not None:
+            if payload.status == OperationStatus.COMPLETED and (
+                prev_status != OperationStatus.COMPLETED or reverted_completed
+            ):
+                await apply_production_output_completed(connection, operation_id)
+            if (
+                payload.status == OperationStatus.CANCELLED
+                and prev_status == OperationStatus.COMPLETED
+                and not reverted_completed
+            ):
+                await revert_production_output_completed(connection, operation_id)
+        elif reverted_completed and prev_status == OperationStatus.COMPLETED:
+            await apply_production_output_completed(connection, operation_id)
+
         so_vals: dict[str, Any] = {}
 
         if payload.name is not None:
@@ -243,16 +286,47 @@ async def update_production_output(connection: Connection, operation_id: int, pa
                 Update(ProductionOutput).where(ProductionOutput.operation_id == operation_id).values(**p_vals)
             )
 
-        if payload.items is not None:
-            await connection.execute(Delete(ProductionOutputItem).where(ProductionOutputItem.operation_id == operation_id))
 
-            for it in payload.items:
-                await connection.execute(
-                    Insert(ProductionOutputItem).values(
-                        operation_id=operation_id,
-                        material_id=it.material_id,
-                        quantity=it.quantity,
-                        unit_price=it.unit_price,
-                        batch_id=None,
-                    )
-                )
+async def apply_production_output_completed(connection: Connection, operation_id: int) -> None:
+    hdr = await connection.fetch_row(
+        Select(ProductionOutput.warehouse_id).where(ProductionOutput.operation_id == operation_id)
+    )
+    if hdr is None:
+        raise StockIntegrityError("Выпуск не найден")
+    wh = int(hdr["warehouse_id"])
+
+    rows = await connection.fetch(
+        Select(
+            ProductionOutputItem.id,
+            ProductionOutputItem.material_id,
+            ProductionOutputItem.quantity,
+            ProductionOutputItem.batch_id,
+        )
+        .where(ProductionOutputItem.operation_id == operation_id)
+        .order_by(ProductionOutputItem.id.asc())
+    )
+    for r in rows:
+        if r["batch_id"] is not None:
+            continue
+        bid = await insert_inbound_batch(
+            connection,
+            warehouse_id=wh,
+            material_id=int(r["material_id"]),
+            quantity=r["quantity"],
+        )
+        await connection.execute(
+            Update(ProductionOutputItem).where(ProductionOutputItem.id == r["id"]).values(batch_id=bid)
+        )
+
+
+async def revert_production_output_completed(connection: Connection, operation_id: int) -> None:
+    rows = await connection.fetch(
+        Select(ProductionOutputItem.id, ProductionOutputItem.batch_id)
+        .where(ProductionOutputItem.operation_id == operation_id, ProductionOutputItem.batch_id.is_not(None))
+    )
+    for r in rows:
+        bid = int(r["batch_id"])
+        await connection.execute(
+            Update(ProductionOutputItem).where(ProductionOutputItem.id == r["id"]).values(batch_id=None)
+        )
+        await connection.execute(Delete(Batch).where(Batch.id == bid))

@@ -11,6 +11,7 @@ from core.methods import get_connection, get_current_user, require_permissions
 from core.models import CounterpartyRoleType, OperationStatus
 from core.schemes import Pagination, UserModel
 from modules.operations.repositories import counterparty_role_exists, material_exists, warehouse_exists
+from modules.operations.exceptions import StockOperationError
 from modules.operations.responses import OPERATION_HEADER_NOT_FOUND
 from modules.operations.schemes import OperationCreateResponse
 from modules.operations.shipment import repositories
@@ -158,4 +159,7 @@ async def update_shipment(
             if not await material_exists(connection, it.material_id):
                 raise APIException(status_code=404, code="MATERIAL_NOT_FOUND", message="Материал не найден")
 
-    await repositories.update_shipment(connection, operation_id, payload)
+    try:
+        await repositories.update_shipment(connection, operation_id, payload)
+    except StockOperationError as e:
+        raise APIException(status_code=422, code=e.code, message=e.message) from e

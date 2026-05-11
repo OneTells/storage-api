@@ -8,6 +8,8 @@ from sqlalchemy.dialects.postgresql import Insert, aggregate_order_by
 
 from core.models import Counterparty, OperationStatus, Shipment, ShipmentItem, StockOperation, StockOperationType, User
 
+from modules.operations.exceptions import InsufficientStockError, StockIntegrityError
+from modules.operations.repositories import adjust_batch_remaining, try_single_batch_outbound
 from modules.operations.shipment.schemes import ShipmentCreate, ShipmentUpdate
 
 
@@ -200,6 +202,43 @@ async def update_shipment(connection: Connection, operation_id: int, payload: Sh
     now = datetime.now(UTC)
 
     async with connection.transaction():
+        prev = await connection.fetch_row(Select(Shipment.status).where(Shipment.operation_id == operation_id))
+        if prev is None:
+            return
+
+        prev_status: OperationStatus = prev["status"]
+        reverted_completed = False
+
+        if payload.items is not None:
+            if prev_status == OperationStatus.COMPLETED:
+                await revert_shipment_completed(connection, operation_id)
+                reverted_completed = True
+            await connection.execute(Delete(ShipmentItem).where(ShipmentItem.operation_id == operation_id))
+
+            for it in payload.items:
+                await connection.execute(
+                    Insert(ShipmentItem).values(
+                        operation_id=operation_id,
+                        material_id=it.material_id,
+                        quantity=it.quantity,
+                        batch_id=None,
+                    )
+                )
+
+        if payload.status is not None:
+            if payload.status == OperationStatus.COMPLETED and (
+                prev_status != OperationStatus.COMPLETED or reverted_completed
+            ):
+                await apply_shipment_completed(connection, operation_id)
+            if (
+                payload.status == OperationStatus.CANCELLED
+                and prev_status == OperationStatus.COMPLETED
+                and not reverted_completed
+            ):
+                await revert_shipment_completed(connection, operation_id)
+        elif reverted_completed and prev_status == OperationStatus.COMPLETED:
+            await apply_shipment_completed(connection, operation_id)
+
         so_vals: dict[str, Any] = {}
 
         if payload.name is not None:
@@ -234,15 +273,40 @@ async def update_shipment(connection: Connection, operation_id: int, payload: Sh
         if s_vals:
             await connection.execute(Update(Shipment).where(Shipment.operation_id == operation_id).values(**s_vals))
 
-        if payload.items is not None:
-            await connection.execute(Delete(ShipmentItem).where(ShipmentItem.operation_id == operation_id))
 
-            for it in payload.items:
-                await connection.execute(
-                    Insert(ShipmentItem).values(
-                        operation_id=operation_id,
-                        material_id=it.material_id,
-                        quantity=it.quantity,
-                        batch_id=None,
-                    )
-                )
+async def apply_shipment_completed(connection: Connection, operation_id: int) -> None:
+    hdr = await connection.fetch_row(
+        Select(Shipment.warehouse_id).where(Shipment.operation_id == operation_id)
+    )
+    if hdr is None:
+        raise StockIntegrityError("Отгрузка не найдена")
+    wh = int(hdr["warehouse_id"])
+
+    rows = await connection.fetch(
+        Select(ShipmentItem.id, ShipmentItem.material_id, ShipmentItem.quantity, ShipmentItem.batch_id)
+        .where(ShipmentItem.operation_id == operation_id)
+        .order_by(ShipmentItem.id.asc())
+    )
+    for r in rows:
+        if r["batch_id"] is not None:
+            continue
+        bid = await try_single_batch_outbound(
+            connection, warehouse_id=wh, material_id=int(r["material_id"]), quantity=r["quantity"]
+        )
+        if bid is None:
+            raise InsufficientStockError(
+                "Недостаточно одной партии с полным остатком под строку отгрузки (увеличьте срок партий или разбейте строку)"
+            )
+        await connection.execute(Update(ShipmentItem).where(ShipmentItem.id == r["id"]).values(batch_id=bid))
+
+
+async def revert_shipment_completed(connection: Connection, operation_id: int) -> None:
+    rows = await connection.fetch(
+        Select(ShipmentItem.batch_id, ShipmentItem.quantity)
+        .where(ShipmentItem.operation_id == operation_id, ShipmentItem.batch_id.is_not(None))
+    )
+    for r in rows:
+        await adjust_batch_remaining(connection, int(r["batch_id"]), r["quantity"])
+    await connection.execute(
+        Update(ShipmentItem).where(ShipmentItem.operation_id == operation_id).values(batch_id=None)
+    )

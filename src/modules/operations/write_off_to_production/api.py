@@ -11,6 +11,7 @@ from core.methods import get_connection, get_current_user, require_permissions
 from core.models import OperationStatus
 from core.schemes import Pagination, UserModel
 from modules.operations.repositories import material_exists, warehouse_exists
+from modules.operations.exceptions import StockOperationError
 from modules.operations.responses import OPERATION_HEADER_NOT_FOUND
 from modules.operations.schemes import OperationCreateResponse
 from modules.operations.write_off_to_production import repositories
@@ -157,4 +158,7 @@ async def update_write_off_to_production(
             if not await material_exists(connection, it.material_id):
                 raise APIException(status_code=404, code="MATERIAL_NOT_FOUND", message="Материал не найден")
 
-    await repositories.update_write_off_to_production(connection, operation_id, payload)
+    try:
+        await repositories.update_write_off_to_production(connection, operation_id, payload)
+    except StockOperationError as e:
+        raise APIException(status_code=422, code=e.code, message=e.message) from e

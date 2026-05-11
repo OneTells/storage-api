@@ -15,6 +15,8 @@ from core.models import (
     WriteOffToProductionItem,
 )
 
+from modules.operations.exceptions import InsufficientStockError, StockIntegrityError
+from modules.operations.repositories import adjust_batch_remaining, try_single_batch_outbound
 from modules.operations.write_off_to_production.schemes import WriteOffToProductionCreate, WriteOffToProductionUpdate
 
 
@@ -207,6 +209,48 @@ async def update_write_off_to_production(
     now = datetime.now(UTC)
 
     async with connection.transaction():
+        prev = await connection.fetch_row(
+            Select(WriteOffToProduction.status).where(WriteOffToProduction.operation_id == operation_id)
+        )
+        if prev is None:
+            return
+
+        prev_status: OperationStatus = prev["status"]
+        reverted_completed = False
+
+        if payload.items is not None:
+            if prev_status == OperationStatus.COMPLETED:
+                await revert_write_off_to_production_completed(connection, operation_id)
+                reverted_completed = True
+            await connection.execute(
+                Delete(WriteOffToProductionItem).where(WriteOffToProductionItem.operation_id == operation_id)
+            )
+
+            for it in payload.items:
+                await connection.execute(
+                    Insert(WriteOffToProductionItem).values(
+                        operation_id=operation_id,
+                        material_id=it.material_id,
+                        quantity=it.quantity,
+                        unit_price=it.unit_price,
+                        batch_id=None,
+                    )
+                )
+
+        if payload.status is not None:
+            if payload.status == OperationStatus.COMPLETED and (
+                prev_status != OperationStatus.COMPLETED or reverted_completed
+            ):
+                await apply_write_off_to_production_completed(connection, operation_id)
+            if (
+                payload.status == OperationStatus.CANCELLED
+                and prev_status == OperationStatus.COMPLETED
+                and not reverted_completed
+            ):
+                await revert_write_off_to_production_completed(connection, operation_id)
+        elif reverted_completed and prev_status == OperationStatus.COMPLETED:
+            await apply_write_off_to_production_completed(connection, operation_id)
+
         so_vals: dict[str, Any] = {}
 
         if payload.name is not None:
@@ -240,18 +284,50 @@ async def update_write_off_to_production(
                 Update(WriteOffToProduction).where(WriteOffToProduction.operation_id == operation_id).values(**w_vals)
             )
 
-        if payload.items is not None:
-            await connection.execute(
-                Delete(WriteOffToProductionItem).where(WriteOffToProductionItem.operation_id == operation_id)
-            )
 
-            for it in payload.items:
-                await connection.execute(
-                    Insert(WriteOffToProductionItem).values(
-                        operation_id=operation_id,
-                        material_id=it.material_id,
-                        quantity=it.quantity,
-                        unit_price=it.unit_price,
-                        batch_id=None,
-                    )
-                )
+async def apply_write_off_to_production_completed(connection: Connection, operation_id: int) -> None:
+    hdr = await connection.fetch_row(
+        Select(WriteOffToProduction.warehouse_id).where(WriteOffToProduction.operation_id == operation_id)
+    )
+    if hdr is None:
+        raise StockIntegrityError("Списание в производство не найдено")
+    wh = int(hdr["warehouse_id"])
+
+    rows = await connection.fetch(
+        Select(
+            WriteOffToProductionItem.id,
+            WriteOffToProductionItem.material_id,
+            WriteOffToProductionItem.quantity,
+            WriteOffToProductionItem.batch_id,
+        )
+        .where(WriteOffToProductionItem.operation_id == operation_id)
+        .order_by(WriteOffToProductionItem.id.asc())
+    )
+    for r in rows:
+        if r["batch_id"] is not None:
+            continue
+        bid = await try_single_batch_outbound(
+            connection, warehouse_id=wh, material_id=int(r["material_id"]), quantity=r["quantity"]
+        )
+        if bid is None:
+            raise InsufficientStockError("Недостаточно одной партии под строку списания в производство")
+        await connection.execute(
+            Update(WriteOffToProductionItem).where(WriteOffToProductionItem.id == r["id"]).values(batch_id=bid)
+        )
+
+
+async def revert_write_off_to_production_completed(connection: Connection, operation_id: int) -> None:
+    rows = await connection.fetch(
+        Select(WriteOffToProductionItem.batch_id, WriteOffToProductionItem.quantity)
+        .where(
+            WriteOffToProductionItem.operation_id == operation_id,
+            WriteOffToProductionItem.batch_id.is_not(None),
+        )
+    )
+    for r in rows:
+        await adjust_batch_remaining(connection, int(r["batch_id"]), r["quantity"])
+    await connection.execute(
+        Update(WriteOffToProductionItem)
+        .where(WriteOffToProductionItem.operation_id == operation_id)
+        .values(batch_id=None)
+    )

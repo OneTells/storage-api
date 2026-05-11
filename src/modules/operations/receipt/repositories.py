@@ -6,9 +6,10 @@ from everbase import Connection
 from sqlalchemy import Delete, func, literal_column, Select, Update
 from sqlalchemy.dialects.postgresql import Insert, aggregate_order_by
 
-from core.models import Counterparty, Receipt, ReceiptItem, ReceiptStatus, StockOperation, StockOperationType, User
+from core.models import Batch, Counterparty, Receipt, ReceiptItem, ReceiptStatus, StockOperation, StockOperationType, User
 
-from modules.operations.batch_stock import apply_receipt_completed, revert_receipt_completed
+from modules.operations.exceptions import StockIntegrityError
+from modules.operations.repositories import insert_inbound_batch
 from modules.operations.receipt.schemes import ReceiptCreate, ReceiptUpdate
 
 
@@ -209,6 +210,44 @@ async def update_receipt(connection: Connection, operation_id: int, payload: Rec
     now = datetime.now(UTC)
 
     async with connection.transaction():
+        prev = await connection.fetch_row(Select(Receipt.status).where(Receipt.operation_id == operation_id))
+        if prev is None:
+            return
+
+        prev_status: ReceiptStatus = prev["status"]
+        reverted_completed = False
+
+        if payload.items is not None:
+            if prev_status == ReceiptStatus.COMPLETED:
+                await revert_receipt_completed(connection, operation_id)
+                reverted_completed = True
+            await connection.execute(Delete(ReceiptItem).where(ReceiptItem.operation_id == operation_id))
+
+            for it in payload.items:
+                await connection.execute(
+                    Insert(ReceiptItem).values(
+                        operation_id=operation_id,
+                        material_id=it.material_id,
+                        quantity=it.quantity,
+                        unit_price=it.unit_price,
+                        batch_id=None,
+                    )
+                )
+
+        if payload.status is not None:
+            if payload.status == ReceiptStatus.COMPLETED and (
+                prev_status != ReceiptStatus.COMPLETED or reverted_completed
+            ):
+                await apply_receipt_completed(connection, operation_id)
+            if (
+                payload.status == ReceiptStatus.CANCELLED
+                and prev_status == ReceiptStatus.COMPLETED
+                and not reverted_completed
+            ):
+                await revert_receipt_completed(connection, operation_id)
+        elif reverted_completed and prev_status == ReceiptStatus.COMPLETED:
+            await apply_receipt_completed(connection, operation_id)
+
         so_vals: dict[str, Any] = {}
 
         if payload.name is not None:
@@ -246,16 +285,38 @@ async def update_receipt(connection: Connection, operation_id: int, payload: Rec
         if r_vals:
             await connection.execute(Update(Receipt).where(Receipt.operation_id == operation_id).values(**r_vals))
 
-        if payload.items is not None:
-            await connection.execute(Delete(ReceiptItem).where(ReceiptItem.operation_id == operation_id))
 
-            for it in payload.items:
-                await connection.execute(
-                    Insert(ReceiptItem).values(
-                        operation_id=operation_id,
-                        material_id=it.material_id,
-                        quantity=it.quantity,
-                        unit_price=it.unit_price,
-                        batch_id=None,
-                    )
-                )
+async def apply_receipt_completed(connection: Connection, operation_id: int) -> None:
+    wh_rows = await connection.fetch_row(
+        Select(Receipt.warehouse_id).where(Receipt.operation_id == operation_id)
+    )
+    if wh_rows is None:
+        raise StockIntegrityError("Приёмка не найдена")
+    warehouse_id = int(wh_rows["warehouse_id"])
+
+    items = await connection.fetch(
+        Select(ReceiptItem.id, ReceiptItem.material_id, ReceiptItem.quantity, ReceiptItem.batch_id)
+        .where(ReceiptItem.operation_id == operation_id)
+        .order_by(ReceiptItem.id.asc())
+    )
+    for it in items:
+        if it["batch_id"] is not None:
+            continue
+        bid = await insert_inbound_batch(
+            connection,
+            warehouse_id=warehouse_id,
+            material_id=int(it["material_id"]),
+            quantity=it["quantity"],
+        )
+        await connection.execute(Update(ReceiptItem).where(ReceiptItem.id == it["id"]).values(batch_id=bid))
+
+
+async def revert_receipt_completed(connection: Connection, operation_id: int) -> None:
+    items = await connection.fetch(
+        Select(ReceiptItem.id, ReceiptItem.batch_id)
+        .where(ReceiptItem.operation_id == operation_id, ReceiptItem.batch_id.is_not(None))
+    )
+    for it in items:
+        bid = int(it["batch_id"])
+        await connection.execute(Update(ReceiptItem).where(ReceiptItem.id == it["id"]).values(batch_id=None))
+        await connection.execute(Delete(Batch).where(Batch.id == bid))

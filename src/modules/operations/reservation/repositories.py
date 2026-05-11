@@ -1,4 +1,5 @@
 from datetime import datetime, UTC
+from decimal import Decimal
 from typing import Any
 
 from asyncpg import Record
@@ -8,6 +9,7 @@ from sqlalchemy.dialects.postgresql import Insert, JSON as PG_JSON
 
 from core.models import Batch, Reservation, ReservationStatus, StockOperation, StockOperationType, User
 
+from modules.operations.repositories import adjust_batch_remaining
 from modules.operations.reservation.schemes import ReservationCreate, ReservationUpdate
 
 
@@ -163,6 +165,8 @@ async def create_reservation(connection: Connection, user_id: int, payload: Rese
             )
         )
 
+        await adjust_batch_remaining(connection, fifo_batch_id, -Decimal(str(line.quantity)))
+
     return int(op_id)
 
 
@@ -170,6 +174,24 @@ async def update_reservation(connection: Connection, operation_id: int, payload:
     now = datetime.now(UTC)
 
     async with connection.transaction():
+        prev = await connection.fetch_row(
+            Select(Reservation.status, Reservation.batch_id, Reservation.quantity).where(
+                Reservation.operation_id == operation_id
+            )
+        )
+        if prev is None:
+            return
+
+        prev_status: ReservationStatus = prev["status"]
+
+        if payload.status is not None:
+            if payload.status == ReservationStatus.CANCELLED and prev_status == ReservationStatus.ACTIVE:
+                await adjust_batch_remaining(
+                    connection,
+                    int(prev["batch_id"]),
+                    Decimal(str(prev["quantity"])),
+                )
+
         so_vals: dict[str, Any] = {}
 
         if payload.name is not None:

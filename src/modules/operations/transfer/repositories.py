@@ -6,8 +6,14 @@ from everbase import Connection
 from sqlalchemy import Delete, literal_column, Select, Update, func
 from sqlalchemy.dialects.postgresql import Insert, aggregate_order_by
 
-from core.models import OperationStatus, StockOperation, StockOperationType, Transfer, TransferItem, User
+from core.models import Batch, OperationStatus, StockOperation, StockOperationType, Transfer, TransferItem, User
 
+from modules.operations.exceptions import InsufficientStockError, StockIntegrityError
+from modules.operations.repositories import (
+    adjust_batch_remaining,
+    find_fifo_batch_covering_quantity,
+    insert_inbound_batch,
+)
 from modules.operations.transfer.schemes import TransferCreate, TransferUpdate
 
 
@@ -198,6 +204,44 @@ async def update_transfer(connection: Connection, operation_id: int, payload: Tr
     now = datetime.now(UTC)
 
     async with connection.transaction():
+        prev = await connection.fetch_row(Select(Transfer.status).where(Transfer.operation_id == operation_id))
+        if prev is None:
+            return
+
+        prev_status: OperationStatus = prev["status"]
+        reverted_completed = False
+
+        if payload.items is not None:
+            if prev_status == OperationStatus.COMPLETED:
+                await revert_transfer_completed(connection, operation_id)
+                reverted_completed = True
+            await connection.execute(Delete(TransferItem).where(TransferItem.operation_id == operation_id))
+
+            for it in payload.items:
+                await connection.execute(
+                    Insert(TransferItem).values(
+                        operation_id=operation_id,
+                        material_id=it.material_id,
+                        quantity=it.quantity,
+                        old_batch_id=None,
+                        new_batch_id=None,
+                    )
+                )
+
+        if payload.status is not None:
+            if payload.status == OperationStatus.COMPLETED and (
+                prev_status != OperationStatus.COMPLETED or reverted_completed
+            ):
+                await apply_transfer_completed(connection, operation_id)
+            if (
+                payload.status == OperationStatus.CANCELLED
+                and prev_status == OperationStatus.COMPLETED
+                and not reverted_completed
+            ):
+                await revert_transfer_completed(connection, operation_id)
+        elif reverted_completed and prev_status == OperationStatus.COMPLETED:
+            await apply_transfer_completed(connection, operation_id)
+
         so_vals: dict[str, Any] = {}
 
         if payload.name is not None:
@@ -229,16 +273,57 @@ async def update_transfer(connection: Connection, operation_id: int, payload: Tr
         if t_vals:
             await connection.execute(Update(Transfer).where(Transfer.operation_id == operation_id).values(**t_vals))
 
-        if payload.items is not None:
-            await connection.execute(Delete(TransferItem).where(TransferItem.operation_id == operation_id))
 
-            for it in payload.items:
-                await connection.execute(
-                    Insert(TransferItem).values(
-                        operation_id=operation_id,
-                        material_id=it.material_id,
-                        quantity=it.quantity,
-                        old_batch_id=None,
-                        new_batch_id=None,
-                    )
-                )
+async def apply_transfer_completed(connection: Connection, operation_id: int) -> None:
+    hdr = await connection.fetch_row(
+        Select(Transfer.from_warehouse_id, Transfer.to_warehouse_id).where(
+            Transfer.operation_id == operation_id
+        )
+    )
+    if hdr is None:
+        raise StockIntegrityError("Перемещение не найдено")
+    from_wh = int(hdr["from_warehouse_id"])
+    to_wh = int(hdr["to_warehouse_id"])
+
+    rows = await connection.fetch(
+        Select(
+            TransferItem.id,
+            TransferItem.material_id,
+            TransferItem.quantity,
+            TransferItem.new_batch_id,
+        )
+        .where(TransferItem.operation_id == operation_id)
+        .order_by(TransferItem.id.asc())
+    )
+    for r in rows:
+        if r["new_batch_id"] is not None:
+            continue
+        qty = r["quantity"]
+        mat = int(r["material_id"])
+        src = await find_fifo_batch_covering_quantity(connection, from_wh, mat, qty)
+        if src is None:
+            raise InsufficientStockError("Недостаточно одной партии на складе-отправителе под строку перемещения")
+        old_id = int(src["id"])
+        await adjust_batch_remaining(connection, old_id, -qty)
+        new_id = await insert_inbound_batch(connection, warehouse_id=to_wh, material_id=mat, quantity=qty)
+        await connection.execute(
+            Update(TransferItem)
+            .where(TransferItem.id == r["id"])
+            .values(old_batch_id=old_id, new_batch_id=new_id)
+        )
+
+
+async def revert_transfer_completed(connection: Connection, operation_id: int) -> None:
+    rows = await connection.fetch(
+        Select(TransferItem.id, TransferItem.old_batch_id, TransferItem.new_batch_id, TransferItem.quantity)
+        .where(
+            TransferItem.operation_id == operation_id,
+            TransferItem.new_batch_id.is_not(None),
+        )
+    )
+    for r in rows:
+        await adjust_batch_remaining(connection, int(r["old_batch_id"]), r["quantity"])
+        await connection.execute(
+            Update(TransferItem).where(TransferItem.id == r["id"]).values(old_batch_id=None, new_batch_id=None)
+        )
+        await connection.execute(Delete(Batch).where(Batch.id == int(r["new_batch_id"])))

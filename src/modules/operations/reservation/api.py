@@ -22,6 +22,7 @@ from modules.operations.reservation.schemes import (
     ReservationCreate, ReservationRead, ReservationsListResponse, ReservationUpdate
 )
 from modules.operations.responses import OPERATION_HEADER_NOT_FOUND
+from modules.operations.exceptions import StockOperationError
 from modules.operations.schemes import OperationCreateResponse
 
 router = APIRouter()
@@ -130,7 +131,10 @@ async def create_reservation(
             message="Нет партии с достаточным свободным остатком для резерва по FIFO на указанном складе",
         )
 
-    op_id = await repositories.create_reservation(connection, user.id, payload, fifo_batch_id=int(fifo["id"]))
+    try:
+        op_id = await repositories.create_reservation(connection, user.id, payload, fifo_batch_id=int(fifo["id"]))
+    except StockOperationError as e:
+        raise APIException(status_code=422, code=e.code, message=e.message) from e
     return OperationCreateResponse(id=op_id)
 
 
@@ -168,4 +172,7 @@ async def update_reservation(
                 message="Недостаточно остатка в партии",
             )
 
-    await repositories.update_reservation(connection, operation_id, payload)
+    try:
+        await repositories.update_reservation(connection, operation_id, payload)
+    except StockOperationError as e:
+        raise APIException(status_code=422, code=e.code, message=e.message) from e
