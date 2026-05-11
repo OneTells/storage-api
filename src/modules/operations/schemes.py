@@ -2,6 +2,8 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field
 
+from core.models import OperationStatus, ReceiptStatus, ReservationStatus
+
 IdField = Annotated[int, Field(ge=1, description="Идентификатор операции (stock_operations.id)")]
 
 
@@ -27,4 +29,10 @@ class OperationProductionOrderRef(BaseModel):
 
 
 class OperationCreateResponse(BaseModel):
+    """Ответ POST при создании складской операции: идентификатор и начальный статус (тип enum зависит от вида операции)."""
+
     id: IdField
+    status: Annotated[
+        OperationStatus | ReceiptStatus | ReservationStatus,
+        Field(description="Статус операции сразу после создания"),
+    ]

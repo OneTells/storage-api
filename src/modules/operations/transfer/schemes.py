@@ -18,6 +18,10 @@ class TransferCreate(BaseModel):
     performed_at: Annotated[AwareDatetime, Field(description="Дата проведения операции")]
     from_warehouse_id: Annotated[int, Field(ge=1, description="Склад-отправитель")]
     to_warehouse_id: Annotated[int, Field(ge=1, description="Склад-получатель")]
+    status: Annotated[
+        OperationStatus,
+        Field(default=OperationStatus.DRAFT, description="Статус перемещения при создании"),
+    ] = OperationStatus.DRAFT
     items: list[TransferItemCreate]
 
 

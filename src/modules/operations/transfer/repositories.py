@@ -165,6 +165,13 @@ async def get_transfer(connection: Connection, operation_id: int) -> Record | No
 
 
 async def create_transfer(connection: Connection, user_id: int, payload: TransferCreate) -> int:
+    now = datetime.now(UTC)
+    so_extra: dict[str, Any] = {}
+    if payload.status == OperationStatus.COMPLETED:
+        so_extra["completed_at"] = now
+    elif payload.status == OperationStatus.CANCELLED:
+        so_extra["cancelled_at"] = now
+
     async with connection.transaction():
         op_id = await connection.fetch_val(
             Insert(StockOperation)
@@ -173,6 +180,7 @@ async def create_transfer(connection: Connection, user_id: int, payload: Transfe
                 name=payload.name,
                 performed_at=payload.performed_at,
                 created_by_id=user_id,
+                **so_extra,
             )
             .returning(StockOperation.id)
         )
@@ -182,7 +190,7 @@ async def create_transfer(connection: Connection, user_id: int, payload: Transfe
                 operation_id=op_id,
                 from_warehouse_id=payload.from_warehouse_id,
                 to_warehouse_id=payload.to_warehouse_id,
-                status=OperationStatus.DRAFT,
+                status=payload.status,
             )
         )
 
@@ -196,6 +204,9 @@ async def create_transfer(connection: Connection, user_id: int, payload: Transfe
                     new_batch_id=None,
                 )
             )
+
+        if payload.status == OperationStatus.COMPLETED:
+            await apply_transfer_completed(connection, int(op_id))
 
     return int(op_id)
 

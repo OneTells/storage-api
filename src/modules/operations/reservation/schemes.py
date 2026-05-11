@@ -18,6 +18,10 @@ class ReservationItemCreate(BaseModel):
 class ReservationCreate(BaseModel):
     name: Annotated[str, Field(min_length=1, max_length=255, description="Наименование операции")]
     warehouse_id: Annotated[int, Field(ge=1, description="Склад, с которого резервируется остаток (FIFO по партиям)")]
+    status: Annotated[
+        ReservationStatus,
+        Field(default=ReservationStatus.ACTIVE, description="Статус резерва при создании"),
+    ] = ReservationStatus.ACTIVE
     items: Annotated[
         list[ReservationItemCreate],
         Field(

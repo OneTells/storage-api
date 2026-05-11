@@ -168,6 +168,13 @@ async def get_inventory_adjustment(connection: Connection, operation_id: int) ->
 
 
 async def create_inventory_adjustment(connection: Connection, user_id: int, payload: InventoryAdjustmentCreate) -> int:
+    now = datetime.now(UTC)
+    so_extra: dict[str, Any] = {}
+    if payload.status == OperationStatus.COMPLETED:
+        so_extra["completed_at"] = now
+    elif payload.status == OperationStatus.CANCELLED:
+        so_extra["cancelled_at"] = now
+
     async with connection.transaction():
         op_id = await connection.fetch_val(
             Insert(StockOperation)
@@ -176,6 +183,7 @@ async def create_inventory_adjustment(connection: Connection, user_id: int, payl
                 name=payload.name,
                 performed_at=payload.performed_at,
                 created_by_id=user_id,
+                **so_extra,
             )
             .returning(StockOperation.id)
         )
@@ -185,7 +193,7 @@ async def create_inventory_adjustment(connection: Connection, user_id: int, payl
                 operation_id=op_id,
                 warehouse_id=payload.warehouse_id,
                 description=payload.description,
-                status=OperationStatus.DRAFT,
+                status=payload.status,
             )
         )
 
@@ -198,6 +206,9 @@ async def create_inventory_adjustment(connection: Connection, user_id: int, payl
                     actual_qty=it.actual_qty,
                 )
             )
+
+        if payload.status == OperationStatus.COMPLETED:
+            await apply_inventory_adjustment_completed(connection, int(op_id))
 
     return int(op_id)
 

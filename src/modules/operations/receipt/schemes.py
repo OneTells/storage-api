@@ -23,6 +23,10 @@ class ReceiptCreate(BaseModel):
         "0"
     )
     discount: Annotated[Decimal, Field(ge=0, decimal_places=2, description="Скидка на приёмку")] = Decimal("0")
+    status: Annotated[
+        ReceiptStatus,
+        Field(default=ReceiptStatus.DRAFT, description="Статус приёмки при создании"),
+    ] = ReceiptStatus.DRAFT
     items: list[ReceiptItemCreate]
 
 

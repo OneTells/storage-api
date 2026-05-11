@@ -161,6 +161,13 @@ async def get_write_off(connection: Connection, operation_id: int) -> Record | N
 
 
 async def create_write_off(connection: Connection, user_id: int, payload: WriteOffCreate) -> int:
+    now = datetime.now(UTC)
+    so_extra: dict[str, Any] = {}
+    if payload.status == OperationStatus.COMPLETED:
+        so_extra["completed_at"] = now
+    elif payload.status == OperationStatus.CANCELLED:
+        so_extra["cancelled_at"] = now
+
     async with connection.transaction():
         op_id = await connection.fetch_val(
             Insert(StockOperation)
@@ -169,6 +176,7 @@ async def create_write_off(connection: Connection, user_id: int, payload: WriteO
                 name=payload.name,
                 performed_at=payload.performed_at,
                 created_by_id=user_id,
+                **so_extra,
             )
             .returning(StockOperation.id)
         )
@@ -178,7 +186,7 @@ async def create_write_off(connection: Connection, user_id: int, payload: WriteO
                 operation_id=op_id,
                 warehouse_id=payload.warehouse_id,
                 reason=payload.reason,
-                status=OperationStatus.DRAFT,
+                status=payload.status,
             )
         )
 
@@ -192,6 +200,9 @@ async def create_write_off(connection: Connection, user_id: int, payload: WriteO
                     batch_id=None,
                 )
             )
+
+        if payload.status == OperationStatus.COMPLETED:
+            await apply_write_off_completed(connection, int(op_id))
 
     return int(op_id)
 

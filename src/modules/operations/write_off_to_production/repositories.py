@@ -168,6 +168,13 @@ async def get_write_off_to_production(connection: Connection, operation_id: int)
 
 
 async def create_write_off_to_production(connection: Connection, user_id: int, payload: WriteOffToProductionCreate) -> int:
+    now = datetime.now(UTC)
+    so_extra: dict[str, Any] = {}
+    if payload.status == OperationStatus.COMPLETED:
+        so_extra["completed_at"] = now
+    elif payload.status == OperationStatus.CANCELLED:
+        so_extra["cancelled_at"] = now
+
     async with connection.transaction():
         op_id = await connection.fetch_val(
             Insert(StockOperation)
@@ -176,6 +183,7 @@ async def create_write_off_to_production(connection: Connection, user_id: int, p
                 name=payload.name,
                 performed_at=payload.performed_at,
                 created_by_id=user_id,
+                **so_extra,
             )
             .returning(StockOperation.id)
         )
@@ -185,7 +193,7 @@ async def create_write_off_to_production(connection: Connection, user_id: int, p
                 operation_id=op_id,
                 warehouse_id=payload.warehouse_id,
                 production_order_id=payload.production_order_reference,
-                status=OperationStatus.DRAFT,
+                status=payload.status,
             )
         )
 
@@ -199,6 +207,9 @@ async def create_write_off_to_production(connection: Connection, user_id: int, p
                     batch_id=None,
                 )
             )
+
+        if payload.status == OperationStatus.COMPLETED:
+            await apply_write_off_to_production_completed(connection, int(op_id))
 
     return int(op_id)
 

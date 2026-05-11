@@ -144,6 +144,12 @@ async def create_reservation(connection: Connection, user_id: int, payload: Rese
     line = payload.items[0]
     perf = datetime.now(UTC)
 
+    so_extra: dict[str, Any] = {}
+    if payload.status == ReservationStatus.RELEASED:
+        so_extra["completed_at"] = perf
+    elif payload.status == ReservationStatus.CANCELLED:
+        so_extra["cancelled_at"] = perf
+
     async with connection.transaction():
         op_id = await connection.fetch_val(
             Insert(StockOperation)
@@ -152,6 +158,7 @@ async def create_reservation(connection: Connection, user_id: int, payload: Rese
                 name=payload.name,
                 performed_at=perf,
                 created_by_id=user_id,
+                **so_extra,
             )
             .returning(StockOperation.id)
         )
@@ -161,11 +168,12 @@ async def create_reservation(connection: Connection, user_id: int, payload: Rese
                 operation_id=op_id,
                 batch_id=fifo_batch_id,
                 quantity=line.quantity,
-                status=ReservationStatus.ACTIVE,
+                status=payload.status,
             )
         )
 
-        await adjust_batch_remaining(connection, fifo_batch_id, -Decimal(str(line.quantity)))
+        if payload.status == ReservationStatus.ACTIVE:
+            await adjust_batch_remaining(connection, fifo_batch_id, -Decimal(str(line.quantity)))
 
     return int(op_id)
 

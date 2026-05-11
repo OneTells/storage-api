@@ -19,6 +19,10 @@ class ShipmentCreate(BaseModel):
     warehouse_id: Annotated[int, Field(ge=1, description="Идентификатор склада")]
     customer_id: Annotated[int, Field(ge=1, description="Идентификатор клиента")]
     order_number: Annotated[str | None, Field(max_length=100, description="Номер заказа клиента")] = None
+    status: Annotated[
+        OperationStatus,
+        Field(default=OperationStatus.DRAFT, description="Статус отгрузки при создании"),
+    ] = OperationStatus.DRAFT
     items: list[ShipmentItemCreate]
 
 

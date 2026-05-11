@@ -122,8 +122,11 @@ async def create_write_off_to_production(
         if not await material_exists(connection, it.material_id):
             raise APIException(status_code=404, code="MATERIAL_NOT_FOUND", message="Материал не найден")
 
-    op_id = await repositories.create_write_off_to_production(connection, user.id, payload)
-    return OperationCreateResponse(id=op_id)
+    try:
+        op_id = await repositories.create_write_off_to_production(connection, user.id, payload)
+    except StockOperationError as e:
+        raise APIException(status_code=422, code=e.code, message=e.message) from e
+    return OperationCreateResponse(id=op_id, status=payload.status)
 
 
 @router.patch(

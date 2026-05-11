@@ -19,6 +19,10 @@ class InventoryAdjustmentCreate(BaseModel):
     performed_at: Annotated[AwareDatetime, Field(description="Дата проведения инвентаризации")]
     warehouse_id: Annotated[int, Field(ge=1, description="Идентификатор склада")]
     description: Annotated[str, Field(min_length=1, description="Комментарий / описание инвентаризации")]
+    status: Annotated[
+        OperationStatus,
+        Field(default=OperationStatus.DRAFT, description="Статус инвентаризации при создании"),
+    ] = OperationStatus.DRAFT
     items: list[InventoryAdjustmentItemCreate]
 
 

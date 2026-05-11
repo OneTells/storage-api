@@ -19,6 +19,10 @@ class WriteOffCreate(BaseModel):
     performed_at: Annotated[AwareDatetime, Field(description="Дата проведения операции")]
     warehouse_id: Annotated[int, Field(ge=1, description="Идентификатор склада")]
     reason: Annotated[str, Field(min_length=1, description="Общая причина списания (шапка операции)")]
+    status: Annotated[
+        OperationStatus,
+        Field(default=OperationStatus.DRAFT, description="Статус списания при создании"),
+    ] = OperationStatus.DRAFT
     items: list[WriteOffItemCreate]
 
 

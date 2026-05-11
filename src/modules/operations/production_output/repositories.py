@@ -174,6 +174,13 @@ async def get_production_output(connection: Connection, operation_id: int) -> Re
 
 
 async def create_production_output(connection: Connection, user_id: int, payload: ProductionOutputCreate) -> int:
+    now = datetime.now(UTC)
+    so_extra: dict[str, Any] = {}
+    if payload.status == OperationStatus.COMPLETED:
+        so_extra["completed_at"] = now
+    elif payload.status == OperationStatus.CANCELLED:
+        so_extra["cancelled_at"] = now
+
     async with connection.transaction():
         op_id = await connection.fetch_val(
             Insert(StockOperation)
@@ -182,6 +189,7 @@ async def create_production_output(connection: Connection, user_id: int, payload
                 name=payload.name,
                 performed_at=payload.performed_at,
                 created_by_id=user_id,
+                **so_extra,
             )
             .returning(StockOperation.id)
         )
@@ -191,7 +199,7 @@ async def create_production_output(connection: Connection, user_id: int, payload
                 operation_id=op_id,
                 production_order_id=payload.production_order_id,
                 warehouse_id=payload.warehouse_id,
-                status=OperationStatus.DRAFT,
+                status=payload.status,
             )
         )
 
@@ -205,6 +213,9 @@ async def create_production_output(connection: Connection, user_id: int, payload
                     batch_id=None,
                 )
             )
+
+        if payload.status == OperationStatus.COMPLETED:
+            await apply_production_output_completed(connection, int(op_id))
 
     return int(op_id)
 

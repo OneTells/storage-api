@@ -163,6 +163,13 @@ async def get_shipment(connection: Connection, operation_id: int) -> Record | No
 
 
 async def create_shipment(connection: Connection, user_id: int, payload: ShipmentCreate) -> int:
+    now = datetime.now(UTC)
+    so_extra: dict[str, Any] = {}
+    if payload.status == OperationStatus.COMPLETED:
+        so_extra["completed_at"] = now
+    elif payload.status == OperationStatus.CANCELLED:
+        so_extra["cancelled_at"] = now
+
     async with connection.transaction():
         op_id = await connection.fetch_val(
             Insert(StockOperation)
@@ -171,6 +178,7 @@ async def create_shipment(connection: Connection, user_id: int, payload: Shipmen
                 name=payload.name,
                 performed_at=payload.performed_at,
                 created_by_id=user_id,
+                **so_extra,
             )
             .returning(StockOperation.id)
         )
@@ -181,7 +189,7 @@ async def create_shipment(connection: Connection, user_id: int, payload: Shipmen
                 counterparty_id=payload.customer_id,
                 warehouse_id=payload.warehouse_id,
                 order_number=payload.order_number,
-                status=OperationStatus.DRAFT,
+                status=payload.status,
             )
         )
 
@@ -194,6 +202,9 @@ async def create_shipment(connection: Connection, user_id: int, payload: Shipmen
                     batch_id=None,
                 )
             )
+
+        if payload.status == OperationStatus.COMPLETED:
+            await apply_shipment_completed(connection, int(op_id))
 
     return int(op_id)
 

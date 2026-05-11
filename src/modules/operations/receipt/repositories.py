@@ -169,6 +169,13 @@ async def get_receipt(connection: Connection, operation_id: int) -> Record | Non
 
 
 async def create_receipt(connection: Connection, user_id: int, payload: ReceiptCreate) -> int:
+    now = datetime.now(UTC)
+    so_extra: dict[str, Any] = {}
+    if payload.status == ReceiptStatus.COMPLETED:
+        so_extra["completed_at"] = now
+    elif payload.status == ReceiptStatus.CANCELLED:
+        so_extra["cancelled_at"] = now
+
     async with connection.transaction():
         op_id = await connection.fetch_val(
             Insert(StockOperation)
@@ -177,6 +184,7 @@ async def create_receipt(connection: Connection, user_id: int, payload: ReceiptC
                 name=payload.name,
                 performed_at=payload.performed_at,
                 created_by_id=user_id,
+                **so_extra,
             )
             .returning(StockOperation.id)
         )
@@ -188,7 +196,7 @@ async def create_receipt(connection: Connection, user_id: int, payload: ReceiptC
                 warehouse_id=payload.warehouse_id,
                 shipping_price=payload.shipping_price,
                 discount=payload.discount,
-                status=ReceiptStatus.DRAFT,
+                status=payload.status,
             )
         )
 
@@ -202,6 +210,9 @@ async def create_receipt(connection: Connection, user_id: int, payload: ReceiptC
                     batch_id=None,
                 )
             )
+
+        if payload.status == ReceiptStatus.COMPLETED:
+            await apply_receipt_completed(connection, int(op_id))
 
     return int(op_id)
 

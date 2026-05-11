@@ -19,6 +19,10 @@ class ProductionOutputCreate(BaseModel):
     performed_at: Annotated[AwareDatetime, Field(description="Дата проведения операции")]
     production_order_id: Annotated[int, Field(ge=1, description="Идентификатор производственного заказа")]
     warehouse_id: Annotated[int, Field(ge=1, description="Идентификатор склада оприходования")]
+    status: Annotated[
+        OperationStatus,
+        Field(default=OperationStatus.DRAFT, description="Статус выпуска при создании"),
+    ] = OperationStatus.DRAFT
     items: list[ProductionOutputItemCreate]
 
 

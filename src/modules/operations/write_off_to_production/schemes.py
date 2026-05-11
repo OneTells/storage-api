@@ -22,6 +22,10 @@ class WriteOffToProductionCreate(BaseModel):
         str | None,
         Field(max_length=100, description="Номер или текстовый идентификатор производственного заказа (как в БД)"),
     ] = None
+    status: Annotated[
+        OperationStatus,
+        Field(default=OperationStatus.DRAFT, description="Статус списания в производство при создании"),
+    ] = OperationStatus.DRAFT
     items: list[WriteOffToProductionItemCreate]
 
 

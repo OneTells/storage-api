@@ -135,7 +135,7 @@ async def create_reservation(
         op_id = await repositories.create_reservation(connection, user.id, payload, fifo_batch_id=int(fifo["id"]))
     except StockOperationError as e:
         raise APIException(status_code=422, code=e.code, message=e.message) from e
-    return OperationCreateResponse(id=op_id)
+    return OperationCreateResponse(id=op_id, status=payload.status)
 
 
 @router.patch(
