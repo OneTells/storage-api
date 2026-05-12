@@ -7,6 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base
 from .employees import Employee
+from .materials import Material
 from .products import Product
 from .resources import Resource
 from .users import User
@@ -69,3 +70,28 @@ class ProductionOrderWorker(Base):
     employee_id: Mapped[int] = mapped_column(ForeignKey(Employee.id))
     hours_worked: Mapped[Decimal] = mapped_column(Numeric(10, 2))
     hourly_rate: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+
+
+class ProductionOrderMaterial(Base):
+    __tablename__ = "production_order_materials"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    order_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(ProductionOrder.id, ondelete="CASCADE"))
+
+    material_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(Material.id))
+    quantity: Mapped[Decimal] = mapped_column(Numeric(15, 3))
+    reservation_quantity: Mapped[Decimal] = mapped_column(Numeric(15, 3))
+
+
+class ProductionOrderReservation(Base):
+    __tablename__ = "production_order_reservations"
+
+    order_material_id: Mapped[int] = mapped_column(ForeignKey(ProductionOrderMaterial.id, ondelete="CASCADE"), primary_key=True)
+    operation_id: Mapped[int] = mapped_column(ForeignKey("stock_operations.id", ondelete="CASCADE"), primary_key=True)
+
+
+class ProductionOrderWriteOffWarehouse(Base):
+    __tablename__ = "production_order_write_off_warehouses"
+
+    order_id: Mapped[int] = mapped_column(ForeignKey(ProductionOrder.id, ondelete="CASCADE"), primary_key=True)
+    warehouse_id: Mapped[int] = mapped_column(ForeignKey(Warehouse.id), primary_key=True)

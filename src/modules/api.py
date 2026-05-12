@@ -9,6 +9,7 @@ from modules.materials.api import router as materials_router
 from modules.operations.api import router as operations_router
 from modules.permissions.api import router as permissions_router
 from modules.products.api import router as products_router
+from modules.production_orders.api import router as production_orders_router
 from modules.resources.api import router as resources_router
 from modules.roles.api import router as roles_router
 from modules.suppliers.api import router as suppliers_router
@@ -29,6 +30,7 @@ router_with_auth.include_router(customers_router)
 router_with_auth.include_router(employees_router)
 router_with_auth.include_router(materials_router)
 router_with_auth.include_router(operations_router)
+router_with_auth.include_router(production_orders_router)
 router_with_auth.include_router(products_router)
 router_with_auth.include_router(resources_router)
 router_with_auth.include_router(suppliers_router)

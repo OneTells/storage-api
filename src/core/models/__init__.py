@@ -8,7 +8,8 @@ from .materials import (
     MaterialCategorySubcategory,
 )
 from .production_orders import (
-    ProductionOrder, ProductionOrderProduct, ProductionOrderResource, ProductionOrderStatus, ProductionOrderWorker
+    ProductionOrder, ProductionOrderMaterial, ProductionOrderProduct, ProductionOrderReservation, ProductionOrderResource,
+    ProductionOrderStatus, ProductionOrderWorker, ProductionOrderWriteOffWarehouse,
 )
 from .products import (
     Product, ProductCategory, ProductCategoryProduct, ProductCategorySubcategory, ProductMaterial, ProductResource
@@ -51,6 +52,9 @@ __all__ = (
     "ProductionOrderProduct",
     "ProductionOrderResource",
     "ProductionOrderWorker",
+    "ProductionOrderReservation",
+    "ProductionOrderMaterial",
+    "ProductionOrderWriteOffWarehouse",
 
     "ResourceType",
     "Resource",
